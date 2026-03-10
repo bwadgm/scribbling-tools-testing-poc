@@ -26,6 +26,7 @@ export default function ScribbleCanvas() {
       files,
       appState: {
         viewBackgroundColor: '#e8e8e8',
+        scrollX: 0
       },
       scrollToContent: false,
     };
@@ -75,19 +76,19 @@ export default function ScribbleCanvas() {
       setCurrentPage(clampedPage);
 
       // Lock horizontal scroll to centered position
-      if (
-        !isResettingRef.current &&
-        lockedScrollXRef.current !== null &&
-        Math.abs(scrollX - lockedScrollXRef.current) > 2
-      ) {
-        isResettingRef.current = true;
-        excalidrawAPI.updateScene({
-          appState: { scrollX: lockedScrollXRef.current },
-        });
-        requestAnimationFrame(() => {
-          isResettingRef.current = false;
-        });
-      }
+      // if (
+      //   !isResettingRef.current &&
+      //   lockedScrollXRef.current !== null &&
+      //   Math.abs(scrollX - lockedScrollXRef.current) > 2
+      // ) {
+      //   isResettingRef.current = true;
+      //   excalidrawAPI.updateScene({
+      //     appState: { scrollX: lockedScrollXRef.current },
+      //   });
+      //   requestAnimationFrame(() => {
+      //     isResettingRef.current = false;
+      //   });
+      // }
     },
     [excalidrawAPI]
   );
@@ -121,18 +122,20 @@ export default function ScribbleCanvas() {
   );
 
   return (
-    <div className="relative w-full h-full">
-      <Excalidraw
-        excalidrawAPI={(api) => setExcalidrawAPI(api)}
-        initialData={initialDataRef.current}
-        onScrollChange={handleScrollChange}
-        theme="light"
-      />
-      <PageNavigator
-        currentPage={currentPage}
-        totalPages={PAGE_COUNT}
-        onPageChange={handlePageChange}
-      />
+    <div className="relative h-full flex justify-center overflow-hidden">
+      <div style={{width: '800px'}}>
+        <Excalidraw
+          excalidrawAPI={(api) => setExcalidrawAPI(api)}
+          initialData={initialDataRef.current}
+          onScrollChange={handleScrollChange}
+          theme="light"
+        />
+        <PageNavigator
+          currentPage={currentPage}
+          totalPages={PAGE_COUNT}
+          onPageChange={handlePageChange}
+        />
+      </div>
     </div>
   );
 }
