@@ -8,13 +8,14 @@ export default function PageNavigator({ currentPage, totalPages, onPageChange })
   };
 
   return (
-    <div className="absolute top-4 right-4 flex flex-col items-center gap-1 z-50">
+    <div className="absolute top-4 right-4 flex flex-col items-center gap-1" style={{ zIndex: 99999, pointerEvents: 'auto' }}>
       {/* Up arrow */}
       <button
         onClick={handlePrev}
         disabled={currentPage <= 1}
         className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/90 shadow-md border border-gray-200 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
         aria-label="Previous page"
+        style={{ pointerEvents: 'auto' }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -42,6 +43,7 @@ export default function PageNavigator({ currentPage, totalPages, onPageChange })
         disabled={currentPage >= totalPages}
         className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/90 shadow-md border border-gray-200 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
         aria-label="Next page"
+        style={{ pointerEvents: 'auto' }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
