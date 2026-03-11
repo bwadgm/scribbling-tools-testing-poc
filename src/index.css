@@ -11,3 +11,14 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
+
+/* Ensure tldraw container fills available space */
+.tl-container {
+  position: absolute !important;
+  inset: 0 !important;
+}
+
+/* Hide tldraw page menu since we use custom navigation */
+.tlui-page-menu {
+  display: none !important;
+}
