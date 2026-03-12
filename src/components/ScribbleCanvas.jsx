@@ -9,6 +9,7 @@ const MIN_ZOOM = 1
 export default function ScribbleCanvas() {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null)
   const bgRef = useRef(null)
+  const containerRef = useRef(null) // 👈 track actual container size
 
   const syncBackground = (scrollX, scrollY, zoom) => {
     if (!bgRef.current) return
@@ -22,6 +23,10 @@ export default function ScribbleCanvas() {
     const updates = {}
     let needsUpdate = false
 
+    // 👇 use actual container dimensions, not IMAGE dimensions
+    const containerW = containerRef.current?.offsetWidth || IMAGE_WIDTH
+    const containerH = containerRef.current?.offsetHeight || IMAGE_HEIGHT
+
     // 1️⃣ Clamp zoom
     if (currentZoom < MIN_ZOOM) {
       currentZoom = MIN_ZOOM
@@ -30,11 +35,12 @@ export default function ScribbleCanvas() {
       updates.scrollY = 0
       needsUpdate = true
     } else {
-      // 2️⃣ Clamp pan to image bounds at current zoom
-      const minScrollX = -((IMAGE_WIDTH * currentZoom) - IMAGE_WIDTH) / currentZoom
-      const minScrollY = -((IMAGE_HEIGHT * currentZoom) - IMAGE_HEIGHT) / currentZoom
-
+      // 2️⃣ Clamp X — horizontal stays exactly as before
+      const minScrollX = -((IMAGE_WIDTH * currentZoom) - containerW) / currentZoom
       const clampedX = Math.max(minScrollX, Math.min(0, scrollX))
+
+      // 3️⃣ Clamp Y — use containerH so bottom of image is reachable
+      const minScrollY = -((IMAGE_HEIGHT * currentZoom) - containerH) / currentZoom
       const clampedY = Math.max(minScrollY, Math.min(0, scrollY))
 
       if (clampedX !== scrollX || clampedY !== scrollY) {
@@ -48,7 +54,6 @@ export default function ScribbleCanvas() {
       excalidrawAPI.updateScene({ appState: updates })
     }
 
-    // 3️⃣ Sync background image with camera
     syncBackground(
       updates.scrollX ?? scrollX,
       updates.scrollY ?? scrollY,
@@ -57,15 +62,15 @@ export default function ScribbleCanvas() {
   }
 
   return (
-    <div style={{
-      width: IMAGE_WIDTH,
-      height: IMAGE_HEIGHT,
-      overflow: 'hidden',
-      position: 'relative',
-      margin: '0 auto',
-    }}>
-
-      {/* Background image synced with camera */}
+    <div
+      ref={containerRef} // 👈 ref to get actual size
+      style={{
+        width: '100%',   // 👈 fill modal width
+        height: '100%',  // 👈 fill modal canvas area
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+    >
       <img
         ref={bgRef}
         src="/images/image2.png"
@@ -81,7 +86,6 @@ export default function ScribbleCanvas() {
         }}
       />
 
-      {/* Excalidraw transparent on top */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
         <Excalidraw
           excalidrawAPI={(api) => {
@@ -99,7 +103,6 @@ export default function ScribbleCanvas() {
           }}
         />
       </div>
-
     </div>
   )
 }
