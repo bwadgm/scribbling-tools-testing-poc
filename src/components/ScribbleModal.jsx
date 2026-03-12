@@ -28,35 +28,37 @@ export default function ScribbleModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200 shrink-0">
-        <h2 className="text-lg font-semibold text-gray-800">Scribbler</h2>
-        <button
-          onClick={onClose}
-          className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-200 transition-colors text-gray-600 cursor-pointer"
-          aria-label="Close"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+      <div className="flex flex-col bg-white shadow-2xl" style={{ width: '800px', height: '90vh', maxHeight: '800px' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200 shrink-0">
+          <h2 className="text-lg font-semibold text-gray-800">Scribbler</h2>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-200 transition-colors text-gray-600 cursor-pointer"
+            aria-label="Close"
           >
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
-        </button>
-      </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
 
-      {/* Canvas area */}
-      <div className="flex-1 relative overflow-hidden">
-        <ScribbleCanvas />
+        {/* Canvas area */}
+        <div className="flex-1 relative overflow-hidden">
+          <ScribbleCanvas />
+        </div>
       </div>
     </div>
   );

@@ -13,6 +13,8 @@ export default function ScribbleCanvas() {
   const initialDataRef = useRef(null);
   const elementSkeletonsRef = useRef([]);
   const isCleaningRef = useRef(false);
+  const minZoomRef = useRef(1);
+  const MODAL_WIDTH = 800;
 
   // Load background images asynchronously
   useEffect(() => {
@@ -27,11 +29,19 @@ export default function ScribbleCanvas() {
         setCanvasWidth(canvasWidth);
         setTotalHeight(totalHeight);
         
+        // Calculate initial zoom to fit image exactly to 800px modal width
+        // zoom = modalWidth / imageWidth
+        const initialZoom = MODAL_WIDTH / canvasWidth;
+        minZoomRef.current = initialZoom;
+        
         initialDataRef.current = {
           elements,
           files,
           appState: {
             viewBackgroundColor: '#ffffff',
+            zoom: { value: initialZoom },
+            scrollX: 0,
+            scrollY: 0,
           },
           scrollToContent: false,
         };
@@ -46,28 +56,24 @@ export default function ScribbleCanvas() {
     loadImages();
   }, []);
 
-  // After Excalidraw mounts, scroll to first page
+  // After Excalidraw mounts, ensure zoom and position are correct
   useEffect(() => {
     if (!excalidrawAPI) return;
 
     const timer = setTimeout(() => {
-      const firstImg = excalidrawAPI
-        .getSceneElements()
-        .find((el) => el.id === 'bg-img-0');
-
-      if (firstImg) {
-        excalidrawAPI.scrollToContent(firstImg, {
-          fitToViewport: true,
-          viewportZoomFactor: 1.0,
-          animate: false,
-        });
-      }
-    }, 400);
+      excalidrawAPI.updateScene({
+        appState: {
+          zoom: { value: minZoomRef.current },
+          scrollX: 0,
+          scrollY: 0,
+        },
+      });
+    }, 100);
 
     return () => clearTimeout(timer);
   }, [excalidrawAPI]);
 
-  // Remove elements drawn outside image bounds and apply custom stroke width
+  // Remove elements drawn outside image bounds, apply custom stroke width, and enforce zoom constraint
   const handleChange = useCallback(
     (elements, appState) => {
       if (!excalidrawAPI || isCleaningRef.current || elementSkeletonsRef.current.length === 0) return;
@@ -76,6 +82,14 @@ export default function ScribbleCanvas() {
       const elementsToUpdate = [];
       const maxWidth = canvasWidth;
       const maxHeight = totalHeight;
+      let needsUpdate = false;
+      const updates = {};
+
+      // Enforce minimum zoom constraint
+      if (appState.zoom?.value < minZoomRef.current) {
+        updates.zoom = { value: minZoomRef.current };
+        needsUpdate = true;
+      }
 
       elements.forEach((element) => {
         // Skip locked elements (images)
@@ -89,27 +103,24 @@ export default function ScribbleCanvas() {
           elementsToRemove.push(element.id);
         } else {
           // Apply custom thinner stroke width (0.5 instead of default 1)
-          // Excalidraw's "thin" = 1, "regular" = 2, "bold" = 4
-          // We'll make thin even thinner by setting to 0.5
           if (element.strokeWidth === 1 && !element.customStrokeApplied) {
             elementsToUpdate.push({
               ...element,
               strokeWidth: 0.5,
-              customStrokeApplied: true, // Flag to prevent re-processing
+              customStrokeApplied: true,
             });
           }
         }
       });
 
-      // Update or remove elements if needed
-      if (elementsToRemove.length > 0 || elementsToUpdate.length > 0) {
+      // Update elements or appState if needed
+      if (elementsToRemove.length > 0 || elementsToUpdate.length > 0 || needsUpdate) {
         isCleaningRef.current = true;
         
         let updatedElements = elements.filter(
           (el) => !elementsToRemove.includes(el.id)
         );
 
-        // Apply stroke width updates
         if (elementsToUpdate.length > 0) {
           updatedElements = updatedElements.map((el) => {
             const update = elementsToUpdate.find((u) => u.id === el.id);
@@ -117,7 +128,18 @@ export default function ScribbleCanvas() {
           });
         }
 
-        excalidrawAPI.updateScene({ elements: updatedElements });
+        const sceneUpdate = {};
+        if (updatedElements !== elements) {
+          sceneUpdate.elements = updatedElements;
+        }
+        if (needsUpdate) {
+          sceneUpdate.appState = updates;
+        }
+
+        if (Object.keys(sceneUpdate).length > 0) {
+          excalidrawAPI.updateScene(sceneUpdate);
+        }
+        
         setTimeout(() => {
           isCleaningRef.current = false;
         }, 100);
@@ -194,47 +216,23 @@ export default function ScribbleCanvas() {
       className="relative h-full" 
       style={{ 
         overflow: 'hidden', 
-        backgroundColor: '#f5f5f5',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'stretch'
+        backgroundColor: '#ffffff',
+        width: '100%'
       }}
     >
-      <div 
-        style={{ 
-          width: `${canvasWidth}px`, 
-          height: '100%',
-          position: 'relative',
-          backgroundColor: '#ffffff',
-          overflow: 'hidden',
-          flexShrink: 0
-        }}
-      >
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            overflow: 'hidden'
-          }}
-        >
-          <Excalidraw
-            excalidrawAPI={(api) => setExcalidrawAPI(api)}
-            initialData={initialDataRef.current}
-            onChange={handleChange}
-            onScrollChange={handleScrollChange}
-            theme="light"
-            viewModeEnabled={false}
-          />
-        </div>
-        <PageNavigator
-          currentPage={currentPage}
-          totalPages={PAGE_COUNT}
-          onPageChange={handlePageChange}
-        />
-      </div>
+      <Excalidraw
+        excalidrawAPI={(api) => setExcalidrawAPI(api)}
+        initialData={initialDataRef.current}
+        onChange={handleChange}
+        onScrollChange={handleScrollChange}
+        theme="light"
+        viewModeEnabled={false}
+      />
+      <PageNavigator
+        currentPage={currentPage}
+        totalPages={PAGE_COUNT}
+        onPageChange={handlePageChange}
+      />
     </div>
   );
 }
