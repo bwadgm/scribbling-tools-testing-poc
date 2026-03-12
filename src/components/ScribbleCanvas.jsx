@@ -44,14 +44,14 @@ export default function ScribbleCanvas() {
       behavior: 'contain',
       initialZoom: 'fit-x',
       baseZoom: 'fit-x',
-      padding: { x: 0, y: 0 },
+      padding: { x: 10, y: 10 },
       origin: { x: 0.5, y: 0 },
     },
     zoomSteps: [1, 1.5, 2, 3, 4, 6, 8],
   };
 
   return (
-    <div style={{ width: '800px', height: '100%', margin: '0 auto', position: 'relative' }}>
+    <div style={{ width: '1000px', height: '100%', margin: '0 auto', position: 'relative' }}>
       <Tldraw
         components={{
           Background: ImageBackground,

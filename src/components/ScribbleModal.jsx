@@ -30,7 +30,7 @@ export default function ScribbleModal({ isOpen, onClose }) {
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col bg-white">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200 shrink-0">
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-300 border-b border-gray-200 shrink-0">
         <h2 className="text-lg font-semibold text-gray-800">Scribbler</h2>
         <button
           onClick={onClose}
@@ -55,7 +55,7 @@ export default function ScribbleModal({ isOpen, onClose }) {
       </div>
 
       {/* Canvas area */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative bg-gray-200">
         <ScribbleCanvas />
       </div>
     </div>
