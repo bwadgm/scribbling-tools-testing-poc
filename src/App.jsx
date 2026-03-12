@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import ScribbleModal from './components/ScribbleModal';
 
 function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -12,11 +11,6 @@ function App() {
       >
         Open Scribbler
       </button>
-
-      <ScribbleModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
     </div>
   );
 }
