@@ -29,9 +29,9 @@ export default function ScribbleModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[10] flex items-center justify-center bg-black/50">
-      <div className="flex flex-col bg-white shadow-2xl" style={{ width: '800px', height: '90vh', maxHeight: '800px' }}>
+      <div className="flex flex-col bg-white shadow-2xl min-w-[700px]" style={{width: '1000px', height: '90vh', maxHeight: '800px' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200 shrink-0">
+        <div className="flex items-center justify-between px-4 py-1 bg-gray-100 border-b border-gray-200 shrink-0">
           <h2 className="text-lg font-semibold text-gray-800">Scribbler</h2>
           <button
             onClick={onClose}
@@ -55,9 +55,11 @@ export default function ScribbleModal({ isOpen, onClose }) {
           </button>
         </div>
 
-        {/* Canvas area */}
-        <div className="flex-1 relative overflow-hidden">
-          <ScribbleCanvas />
+        {/* Canvas area - 90% width centered container */}
+        <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-gray-100 pt-4">
+          <div style={{ width: '90%', height: '100%', position: 'relative' }}>
+            <ScribbleCanvas />
+          </div>
         </div>
       </div>
     </div>

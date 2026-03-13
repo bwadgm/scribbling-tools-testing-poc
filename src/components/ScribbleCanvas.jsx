@@ -1,40 +1,117 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Excalidraw } from '@excalidraw/excalidraw'
+import { exportToBlob } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 
-const IMAGE_WIDTH = 785
-const IMAGE_HEIGHT = 866
-const MIN_ZOOM = 1
-const IMAGE_ID = 'background-image'
+const GAP_BETWEEN_IMAGES = 20
+
+// List of images to load from public/images folder
+const IMAGE_PATHS = [
+  '/images/image2.png',
+  '/images/image4.png',
+]
+
+// Helper to load image and get dimensions
+const loadImage = (src) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve({ src, width: img.naturalWidth, height: img.naturalHeight})
+    img.onerror = reject
+    img.src = src
+  })
+}
 
 export default function ScribbleCanvas() {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null)
+  const [imageData, setImageData] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [minZoom, setMinZoom] = useState(1)
   const containerRef = useRef(null)
 
+  // Load all images and calculate dimensions
+  useEffect(() => {
+    const loadAllImages = async () => {
+      try {
+        const loadedImages = await Promise.all(
+          IMAGE_PATHS.map(path => loadImage(path))
+        )
+
+        // Find minimum width across all images
+        const minWidth = Math.min(...loadedImages.map(img => img.width))
+
+        // Scale all images to minWidth and calculate positions
+        let currentY = 0
+        const scaledImages = loadedImages.map((img, index) => {
+          const scale = minWidth / img.width
+          const scaledHeight = img.height * scale
+          const scaledWidth = minWidth
+
+          const imageInfo = {
+            id: `image-${index}`,
+            src: img.src,
+            x: 0,
+            y: currentY,
+            width: scaledWidth,
+            height: scaledHeight,
+            originalWidth: img.width,
+            originalHeight: img.height,
+          }
+
+          currentY += scaledHeight + GAP_BETWEEN_IMAGES
+
+          return imageInfo
+        })
+
+        const totalHeight = currentY - GAP_BETWEEN_IMAGES // Remove last gap
+
+        setImageData({
+          images: scaledImages,
+          minWidth,
+          totalHeight,
+        })
+        setIsLoading(false)
+      } catch (error) {
+        console.error('Failed to load images:', error)
+        setIsLoading(false)
+      }
+    }
+
+    loadAllImages()
+  }, [])
+
+  // Calculate dynamic MIN_ZOOM based on container width
+  useEffect(() => {
+    if (!imageData || !containerRef.current) return
+
+    const containerWidth = containerRef.current.offsetWidth
+    const calculatedMinZoom = containerWidth / imageData.minWidth
+    setMinZoom(calculatedMinZoom)
+  }, [imageData])
+
   const handleScrollChange = (scrollX, scrollY) => {
-    if (!excalidrawAPI) return
+    if (!excalidrawAPI || !imageData) return
     const { zoom } = excalidrawAPI.getAppState()
     let currentZoom = zoom.value
     const updates = {}
     let needsUpdate = false
 
-    const containerW = containerRef.current?.offsetWidth || IMAGE_WIDTH
-    const containerH = containerRef.current?.offsetHeight || IMAGE_HEIGHT
+    const containerW = containerRef.current?.offsetWidth || imageData.minWidth
+    const containerH = containerRef.current?.offsetHeight || imageData.totalHeight
 
-    // Clamp zoom - cannot go below MIN_ZOOM
-    if (currentZoom < MIN_ZOOM) {
-      currentZoom = MIN_ZOOM
-      updates.zoom = { value: MIN_ZOOM }
+    // Clamp zoom - cannot go below minZoom (dynamically calculated)
+    if (currentZoom < minZoom) {
+      currentZoom = minZoom
+      updates.zoom = { value: minZoom }
       updates.scrollX = 0
       updates.scrollY = 0
       needsUpdate = true
     } else {
       // Clamp X - prevent panning outside image bounds horizontally
-      const minScrollX = -((IMAGE_WIDTH * currentZoom) - containerW) / currentZoom
+      const minScrollX = -((imageData.minWidth * currentZoom) - containerW) / currentZoom
       const clampedX = Math.max(minScrollX, Math.min(0, scrollX))
 
-      // Clamp Y - prevent panning outside image bounds vertically
-      const minScrollY = -((IMAGE_HEIGHT * currentZoom) - containerH) / currentZoom
+      // Clamp Y - prevent panning outside combined image bounds vertically
+      const minScrollY = -((imageData.totalHeight * currentZoom) - containerH) / currentZoom
       const clampedY = Math.max(minScrollY, Math.min(0, scrollY))
 
       if (clampedX !== scrollX || clampedY !== scrollY) {
@@ -49,6 +126,113 @@ export default function ScribbleCanvas() {
     }
   }
 
+  // Export individual image with its annotations
+  const exportImage = async (imageIndex) => {
+    if (!excalidrawAPI || !imageData) return
+
+    const targetImage = imageData.images[imageIndex]
+    const allElements = excalidrawAPI.getSceneElements()
+
+    // Filter elements: include target image + annotations in its Y range
+    const elementsToExport = allElements.filter(el => {
+      if (el.id === targetImage.id) return true
+      // Include annotations that overlap with this image's Y range
+      const elementBottom = el.y + (el.height || 0)
+      const imageBottom = targetImage.y + targetImage.height
+      return el.y < imageBottom && elementBottom > targetImage.y
+    })
+
+    try {
+      const blob = await exportToBlob({
+        elements: elementsToExport,
+        appState: {
+          ...excalidrawAPI.getAppState(),
+          exportBackground: true,
+          exportWithDarkMode: false,
+        },
+        files: excalidrawAPI.getFiles(),
+      })
+
+      // Download
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `annotated-image-${imageIndex + 1}.png`
+      link.click()
+      URL.revokeObjectURL(link.href)
+    } catch (error) {
+      console.error('Export failed:', error)
+    }
+  }
+
+  // Export all images at once
+  const exportAllImages = async () => {
+    if (!imageData) return
+    for (let i = 0; i < imageData.images.length; i++) {
+      await exportImage(i)
+      // Small delay between exports
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+        <p>Loading images...</p>
+      </div>
+    )
+  }
+
+  if (!imageData) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+        <p>Failed to load images</p>
+      </div>
+    )
+  }
+
+  // Generate Excalidraw elements for all images
+  const elements = imageData.images.map((img, index) => ({
+    id: img.id,
+    type: 'image',
+    x: img.x,
+    y: img.y,
+    width: img.width,
+    height: img.height,
+    angle: 0,
+    strokeColor: 'transparent',
+    backgroundColor: 'transparent',
+    fillStyle: 'solid',
+    strokeWidth: 0,
+    strokeStyle: 'solid',
+    roughness: 0,
+    opacity: 100,
+    groupIds: [],
+    frameId: null,
+    roundness: null,
+    seed: index + 1,
+    version: 1,
+    versionNonce: index + 1,
+    isDeleted: false,
+    boundElements: null,
+    updated: Date.now(),
+    link: null,
+    locked: true,
+    fileId: img.id,
+    scale: [1, 1],
+    status: 'saved',
+  }))
+
+  // Generate files object
+  const files = imageData.images.reduce((acc, img) => {
+    acc[img.id] = {
+      mimeType: 'image/png',
+      id: img.id,
+      dataURL: img.src,
+      created: Date.now(),
+    }
+    return acc
+  }, {})
+
   return (
     <div
       ref={containerRef}
@@ -59,58 +243,74 @@ export default function ScribbleCanvas() {
         position: 'relative',
       }}
     >
+      {/* Export buttons overlay */}
+      {imageData && imageData.images.length > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            zIndex: 10000,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}
+        >
+          {/* Export All button */}
+          <button
+            onClick={exportAllImages}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#4f46e5',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: '600',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            }}
+          >
+            Export All ({imageData.images.length})
+          </button>
+          
+          {/* Individual export buttons */}
+          {imageData.images.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => exportImage(index)}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: 'white',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '500',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              }}
+            >
+              Export #{index + 1}
+            </button>
+          ))}
+        </div>
+      )}
+
       <Excalidraw
         excalidrawAPI={(api) => {
           setExcalidrawAPI(api)
         }}
         onScrollChange={handleScrollChange}
         initialData={{
-          elements: [
-            {
-              id: IMAGE_ID,
-              type: 'image',
-              x: 0,
-              y: 0,
-              width: IMAGE_WIDTH,
-              height: IMAGE_HEIGHT,
-              angle: 0,
-              strokeColor: 'transparent',
-              backgroundColor: 'transparent',
-              fillStyle: 'solid',
-              strokeWidth: 0,
-              strokeStyle: 'solid',
-              roughness: 0,
-              opacity: 100,
-              groupIds: [],
-              frameId: null,
-              roundness: null,
-              seed: 1,
-              version: 1,
-              versionNonce: 1,
-              isDeleted: false,
-              boundElements: null,
-              updated: Date.now(),
-              link: null,
-              locked: true,
-              fileId: 'image2',
-              scale: [1, 1],
-              status: 'saved',
-            },
-          ],
+          elements,
           appState: {
             scrollX: 0,
             scrollY: 0,
-            zoom: { value: MIN_ZOOM },
+            zoom: { value: minZoom },
             viewBackgroundColor: 'transparent',
           },
-          files: {
-            'image2': {
-              mimeType: 'image/png',
-              id: 'image2',
-              dataURL: '/images/image2.png',
-              created: Date.now(),
-            },
-          },
+          files,
         }}
       />
     </div>
