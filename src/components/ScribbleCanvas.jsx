@@ -338,7 +338,8 @@ export default function ScribbleCanvas() {
       )}
 
       <Excalidraw
-        excalidrawAPI={(api) => {
+        onExcalidrawAPI={(api) => {
+          console.log("API RECEIVED excalidrawAPI: ", api)
           setExcalidrawAPI(api)
         }}
         onScrollChange={handleScrollChange}
