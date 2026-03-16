@@ -126,20 +126,20 @@ export default function ScribbleCanvas() {
     }
   }
 
-  // Export individual image with its annotations
+  // Export individual image with its annotations using frame
   const exportImage = async (imageIndex) => {
     if (!excalidrawAPI || !imageData) return
 
-    const targetImage = imageData.images[imageIndex]
+    const targetFrameId = `frame-${imageIndex}`
     const allElements = excalidrawAPI.getSceneElements()
 
-    // Filter elements: include target image + annotations in its Y range
+    // Filter elements: include frame + all elements bound to this frame
     const elementsToExport = allElements.filter(el => {
-      if (el.id === targetImage.id) return true
-      // Include annotations that overlap with this image's Y range
-      const elementBottom = el.y + (el.height || 0)
-      const imageBottom = targetImage.y + targetImage.height
-      return el.y < imageBottom && elementBottom > targetImage.y
+      // Include the frame itself
+      if (el.id === targetFrameId) return true
+      // Include all elements that are children of this frame
+      if (el.frameId === targetFrameId) return true
+      return false
     })
 
     try {
@@ -190,37 +190,77 @@ export default function ScribbleCanvas() {
     )
   }
 
-  // Generate Excalidraw elements for all images
-  const elements = imageData.images.map((img, index) => ({
-    id: img.id,
-    type: 'image',
-    x: img.x,
-    y: img.y,
-    width: img.width,
-    height: img.height,
-    angle: 0,
-    strokeColor: 'transparent',
-    backgroundColor: 'transparent',
-    fillStyle: 'solid',
-    strokeWidth: 0,
-    strokeStyle: 'solid',
-    roughness: 0,
-    opacity: 100,
-    groupIds: [],
-    frameId: null,
-    roundness: null,
-    seed: index + 1,
-    version: 1,
-    versionNonce: index + 1,
-    isDeleted: false,
-    boundElements: null,
-    updated: Date.now(),
-    link: null,
-    locked: true,
-    fileId: img.id,
-    scale: [1, 1],
-    status: 'saved',
-  }))
+  // Generate Excalidraw elements with frames
+  const elements = []
+
+  // Create frame and image for each image in the list
+  // IMPORTANT: Children must come BEFORE frame in array (Excalidraw requirement)
+  imageData.images.forEach((img, index) => {
+    const frameId = `frame-${index}`
+
+    // 1. Create image element FIRST (child comes before frame)
+    elements.push({
+      id: img.id,
+      type: 'image',
+      x: img.x,
+      y: img.y,
+      width: img.width,
+      height: img.height,
+      angle: 0,
+      strokeColor: 'transparent',
+      backgroundColor: 'transparent',
+      fillStyle: 'solid',
+      strokeWidth: 0,
+      strokeStyle: 'solid',
+      roughness: 0,
+      opacity: 100,
+      groupIds: [],
+      frameId: frameId, // Bind image to its frame
+      roundness: null,
+      seed: index * 100 + 2,
+      version: 1,
+      versionNonce: index * 100 + 2,
+      isDeleted: false,
+      boundElements: null,
+      updated: Date.now(),
+      link: null,
+      locked: true,
+      fileId: img.id,
+      scale: [1, 1],
+      status: 'saved',
+    })
+
+    // 2. Create frame element AFTER children
+    elements.push({
+      id: frameId,
+      type: 'frame',
+      x: img.x,
+      y: img.y,
+      width: img.width,
+      height: img.height,
+      angle: 0,
+      strokeColor: '#868e96',
+      backgroundColor: 'transparent',
+      fillStyle: 'solid',
+      strokeWidth: 2,
+      strokeStyle: 'solid',
+      roughness: 0,
+      opacity: 100,
+      groupIds: [],
+      frameId: null,
+      roundness: null,
+      seed: index * 100 + 1,
+      version: 1,
+      versionNonce: index * 100 + 1,
+      isDeleted: false,
+      boundElements: null,
+      updated: Date.now(),
+      link: null,
+      locked: false,
+      name: `Image ${index + 1}`,
+      children: [img.id], // Frame contains the image as child
+    })
+  })
 
   // Generate files object
   const files = imageData.images.reduce((acc, img) => {
