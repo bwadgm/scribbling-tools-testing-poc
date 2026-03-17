@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import { Excalidraw } from '@excalidraw/excalidraw'
 import { exportToBlob } from '@excalidraw/excalidraw'
+import {
+  restoreAppState,
+  restoreElements,
+  serializeAsJSON,
+} from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 
 const GAP_BETWEEN_IMAGES = 20
@@ -27,6 +32,7 @@ export default function ScribbleCanvas() {
   const [isLoading, setIsLoading] = useState(true)
   const [minZoom, setMinZoom] = useState(1)
   const containerRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   // Load all images and calculate dimensions
   useEffect(() => {
@@ -93,6 +99,7 @@ export default function ScribbleCanvas() {
     const { zoom } = excalidrawAPI.getAppState()
     let currentZoom = zoom.value
     const updates = {}
+
     let needsUpdate = false
 
     const containerW = containerRef.current?.offsetWidth || imageData.minWidth
@@ -101,9 +108,14 @@ export default function ScribbleCanvas() {
     // Clamp zoom - cannot go below minZoom (dynamically calculated)
     if (currentZoom < minZoom) {
       currentZoom = minZoom
+      const minScrollX = -((imageData.minWidth * currentZoom) - containerW) / currentZoom
+      const minScrollY = -((imageData.totalHeight * currentZoom) - containerH) / currentZoom
+      const clampedX = Math.max(minScrollX, Math.min(0, scrollX))
+      const clampedY = Math.max(minScrollY, Math.min(0, scrollY))
+
       updates.zoom = { value: minZoom }
-      updates.scrollX = 0
-      updates.scrollY = 0
+      updates.scrollX = clampedX
+      updates.scrollY = clampedY
       needsUpdate = true
     } else {
       // Clamp X - prevent panning outside image bounds horizontally
@@ -123,6 +135,63 @@ export default function ScribbleCanvas() {
 
     if (needsUpdate) {
       excalidrawAPI.updateScene({ appState: updates })
+    }
+  }
+
+  const saveSceneAsJSON = () => {
+    if (!excalidrawAPI) return
+
+    const serializedScene = serializeAsJSON(
+      excalidrawAPI.getSceneElements(),
+      excalidrawAPI.getAppState(),
+      excalidrawAPI.getFiles(),
+      'local',
+    )
+
+    const blob = new Blob([serializedScene], {
+      type: 'application/json',
+    })
+
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = 'scribble-scene.excalidraw'
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
+
+  const loadSceneFromFile = async (event) => {
+    const file = event.target.files?.[0]
+
+    if (!file || !excalidrawAPI || !imageData) {
+      return
+    }
+
+    try {
+      const fileText = await file.text()
+      const parsedScene = JSON.parse(fileText)
+      const restoredElements = restoreElements(parsedScene.elements, null)
+      const restoredAppState = restoreAppState(parsedScene.appState, null)
+      const nextZoom = Math.max(restoredAppState.zoom.value, minZoom)
+      const containerW = containerRef.current?.offsetWidth || imageData.minWidth
+      const containerH = containerRef.current?.offsetHeight || imageData.totalHeight
+      const minScrollX = -((imageData.minWidth * nextZoom) - containerW) / nextZoom
+      const minScrollY = -((imageData.totalHeight * nextZoom) - containerH) / nextZoom
+
+      excalidrawAPI.updateScene({
+        elements: restoredElements,
+        appState: {
+          ...restoredAppState,
+          zoom: { value: nextZoom },
+          scrollX: Math.max(minScrollX, Math.min(0, restoredAppState.scrollX)),
+          scrollY: Math.max(minScrollY, Math.min(0, restoredAppState.scrollY)),
+          viewBackgroundColor: 'transparent',
+        },
+        files: parsedScene.files || {},
+      })
+    } catch (error) {
+      console.error('Failed to load saved scene:', error)
+    } finally {
+      event.target.value = ''
     }
   }
 
@@ -256,7 +325,7 @@ export default function ScribbleCanvas() {
       boundElements: null,
       updated: Date.now(),
       link: null,
-      locked: false,
+      locked: true,
       name: `Image ${index + 1}`,
       children: [img.id], // Frame contains the image as child
     })
@@ -296,6 +365,48 @@ export default function ScribbleCanvas() {
             gap: '8px',
           }}
         >
+          <button
+            onClick={saveSceneAsJSON}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#111827',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: '600',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            }}
+          >
+            Save JSON
+          </button>
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#0f766e',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: '600',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            }}
+          >
+            Load JSON
+          </button>
+
+          <input
+            ref={fileInputRef}
+            type='file'
+            accept='.excalidraw,.json'
+            onChange={loadSceneFromFile}
+            style={{ display: 'none' }}
+          />
+
           {/* Export All button */}
           <button
             onClick={exportAllImages}
