@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { Excalidraw } from '@excalidraw/excalidraw'
 import { exportToBlob } from '@excalidraw/excalidraw'
 import {
@@ -7,6 +7,7 @@ import {
   serializeAsJSON,
 } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
+import { saveScribble } from '../utils/localStorage'
 
 const GAP_BETWEEN_IMAGES = 20
 
@@ -26,13 +27,52 @@ const loadImage = (src) => {
   })
 }
 
-export default function ScribbleCanvas() {
+export default function ScribbleCanvas({ initialScribble }) {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null)
   const [imageData, setImageData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [minZoom, setMinZoom] = useState(1)
   const containerRef = useRef(null)
   const fileInputRef = useRef(null)
+
+  const parsedInitialScene = useMemo(() => {
+    if (!initialScribble?.scene) {
+      return null
+    }
+
+    try {
+      return JSON.parse(initialScribble.scene)
+    } catch (error) {
+      console.error('Failed to parse saved scene:', error)
+      return null
+    }
+  }, [initialScribble])
+
+  const applySceneData = (parsedScene) => {
+    if (!excalidrawAPI || !imageData || !parsedScene) {
+      return
+    }
+
+    const restoredElements = restoreElements(parsedScene.elements, null)
+    const restoredAppState = restoreAppState(parsedScene.appState, null)
+    const nextZoom = Math.max(restoredAppState.zoom?.value || 1, minZoom)
+    const containerW = containerRef.current?.offsetWidth || imageData.minWidth
+    const containerH = containerRef.current?.offsetHeight || imageData.totalHeight
+    const minScrollX = -((imageData.minWidth * nextZoom) - containerW) / nextZoom
+    const minScrollY = -((imageData.totalHeight * nextZoom) - containerH) / nextZoom
+
+    excalidrawAPI.updateScene({
+      elements: restoredElements,
+      appState: {
+        ...restoredAppState,
+        zoom: { value: nextZoom },
+        scrollX: Math.max(minScrollX, Math.min(0, restoredAppState.scrollX || 0)),
+        scrollY: Math.max(minScrollY, Math.min(0, restoredAppState.scrollY || 0)),
+        viewBackgroundColor: 'transparent',
+      },
+      files: parsedScene.files || {},
+    })
+  }
 
   // Load all images and calculate dimensions
   useEffect(() => {
@@ -148,15 +188,18 @@ export default function ScribbleCanvas() {
       'local',
     )
 
-    const blob = new Blob([serializedScene], {
-      type: 'application/json',
-    })
+    const currentTitle = initialScribble?.title || 'Untitled Scribble'
+    const nextTitle = window.prompt('Enter scribble title', currentTitle)
 
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = 'scribble-scene.excalidraw'
-    link.click()
-    URL.revokeObjectURL(link.href)
+    if (!nextTitle || !nextTitle.trim()) {
+      return
+    }
+
+    saveScribble({
+      id: initialScribble?.id,
+      title: nextTitle,
+      scene: serializedScene,
+    })
   }
 
   const loadSceneFromFile = async (event) => {
@@ -169,25 +212,7 @@ export default function ScribbleCanvas() {
     try {
       const fileText = await file.text()
       const parsedScene = JSON.parse(fileText)
-      const restoredElements = restoreElements(parsedScene.elements, null)
-      const restoredAppState = restoreAppState(parsedScene.appState, null)
-      const nextZoom = Math.max(restoredAppState.zoom.value, minZoom)
-      const containerW = containerRef.current?.offsetWidth || imageData.minWidth
-      const containerH = containerRef.current?.offsetHeight || imageData.totalHeight
-      const minScrollX = -((imageData.minWidth * nextZoom) - containerW) / nextZoom
-      const minScrollY = -((imageData.totalHeight * nextZoom) - containerH) / nextZoom
-
-      excalidrawAPI.updateScene({
-        elements: restoredElements,
-        appState: {
-          ...restoredAppState,
-          zoom: { value: nextZoom },
-          scrollX: Math.max(minScrollX, Math.min(0, restoredAppState.scrollX)),
-          scrollY: Math.max(minScrollY, Math.min(0, restoredAppState.scrollY)),
-          viewBackgroundColor: 'transparent',
-        },
-        files: parsedScene.files || {},
-      })
+      applySceneData(parsedScene)
     } catch (error) {
       console.error('Failed to load saved scene:', error)
     } finally {
@@ -342,6 +367,26 @@ export default function ScribbleCanvas() {
     return acc
   }, {})
 
+  const initialData = parsedInitialScene
+    ? {
+        elements: parsedInitialScene.elements || [],
+        appState: {
+          ...(parsedInitialScene.appState || {}),
+          viewBackgroundColor: 'transparent',
+        },
+        files: parsedInitialScene.files || {},
+      }
+    : {
+        elements,
+        appState: {
+          scrollX: 0,
+          scrollY: 0,
+          zoom: { value: minZoom },
+          viewBackgroundColor: 'transparent',
+        },
+        files,
+      }
+
   return (
     <div
       ref={containerRef}
@@ -449,21 +494,13 @@ export default function ScribbleCanvas() {
       )}
 
       <Excalidraw
+        key={initialScribble?.id || 'new-scribble'}
         onExcalidrawAPI={(api) => {
           console.log("API RECEIVED excalidrawAPI: ", api)
           setExcalidrawAPI(api)
         }}
         onScrollChange={handleScrollChange}
-        initialData={{
-          elements,
-          appState: {
-            scrollX: 0,
-            scrollY: 0,
-            zoom: { value: minZoom },
-            viewBackgroundColor: 'transparent',
-          },
-          files,
-        }}
+        initialData={initialData}
       />
     </div>
   )
