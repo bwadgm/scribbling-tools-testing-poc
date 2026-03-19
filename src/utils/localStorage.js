@@ -30,7 +30,7 @@ export const getSavedScribbleById = (id) => {
   return readScribbles().find((scribble) => scribble.id === id) || null
 }
 
-export const saveScribble = ({ id, title, scene, templateId }) => {
+export const saveScribble = ({ id, title, scene, templateId, formId }) => {
   const scribbles = readScribbles()
   const now = new Date().toISOString()
   const trimmedTitle = title.trim()
@@ -43,8 +43,12 @@ export const saveScribble = ({ id, title, scene, templateId }) => {
         ? {
             ...scribble,
             title: trimmedTitle,
-            scene,
-            templateId: templateId || scribble.templateId, // Preserve existing templateId if not provided
+            // Store scenes per form
+            scenes: {
+              ...scribble.scenes,
+              [formId]: scene
+            },
+            templateId: templateId || scribble.templateId,
             updatedAt: now,
           }
         : scribble,
@@ -58,8 +62,11 @@ export const saveScribble = ({ id, title, scene, templateId }) => {
   const nextScribble = {
     id: nextId,
     title: trimmedTitle,
-    scene,
-    templateId, // Save templateId for new scribbles
+    // Store scenes per form
+    scenes: {
+      [formId]: scene
+    },
+    templateId,
     createdAt: now,
     updatedAt: now,
   }

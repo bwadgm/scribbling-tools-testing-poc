@@ -8,7 +8,7 @@ import {
 } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import { saveScribble } from '../utils/localStorage'
-import { DEFAULT_TEMPLATE_ID, getTemplateById } from '../utils/templates'
+import { DEFAULT_TEMPLATE_ID, getFormById } from '../utils/templates'
 
 const GAP_BETWEEN_IMAGES = 20
 
@@ -22,30 +22,32 @@ const loadImage = (src) => {
   })
 }
 
-export default function ScribbleCanvas({ initialScribble, onClose, templateId = DEFAULT_TEMPLATE_ID }) {
+export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFAULT_TEMPLATE_ID }) {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null)
   const [imageData, setImageData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [minZoom, setMinZoom] = useState(1)
   const containerRef = useRef(null)
   const fileInputRef = useRef(null)
+  const lastViewportRef = useRef({ zoom: 1, scrollX: 0, scrollY: 0 })
 
   const parsedInitialScene = useMemo(() => {
-    if (!initialScribble?.scene) {
-      return null
+    // Handle new scenes object structure (per form)
+    if (initialScribble?.scenes && initialScribble.scenes[formId]) {
+      try {
+        return JSON.parse(initialScribble.scenes[formId])
+      } catch (error) {
+        console.error('Failed to parse saved scene for form:', formId, error)
+        return null
+      }
     }
 
-    try {
-      return JSON.parse(initialScribble.scene)
-    } catch (error) {
-      console.error('Failed to parse saved scene:', error)
-      return null
-    }
-  }, [initialScribble])
+    return null
+  }, [initialScribble, formId])
 
-  // Get template images based on templateId
-  const template = useMemo(() => getTemplateById(templateId), [templateId])
-  const imagePaths = template.images
+  // Get form images based on formId
+  const form = useMemo(() => getFormById(formId), [formId])
+  const imagePaths = form.images
 
   const applySceneData = (parsedScene) => {
     if (!excalidrawAPI || !imageData || !parsedScene) {
@@ -150,7 +152,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, templateId = 
   const handleScrollChange = (scrollX, scrollY) => {
     if (!excalidrawAPI || !imageData) return
     const { zoom } = excalidrawAPI.getAppState()
-    let currentZoom = zoom.value
+    const currentZoom = Math.max(zoom.value, minZoom)
     const updates = {}
 
     let needsUpdate = false
@@ -158,36 +160,53 @@ export default function ScribbleCanvas({ initialScribble, onClose, templateId = 
     const containerW = containerRef.current?.offsetWidth || imageData.minWidth
     const containerH = containerRef.current?.offsetHeight || imageData.totalHeight
 
-    // Clamp zoom - cannot go below minZoom (dynamically calculated)
-    if (currentZoom < minZoom) {
-      currentZoom = minZoom
-      const minScrollX = -((imageData.minWidth * currentZoom) - containerW) / currentZoom
-      const minScrollY = -((imageData.totalHeight * currentZoom) - containerH) / currentZoom
-      const clampedX = Math.max(minScrollX, Math.min(0, scrollX))
-      const clampedY = Math.max(minScrollY, Math.min(0, scrollY))
+    // Clamp X - prevent panning outside image bounds horizontally
+    const minScrollX = -((imageData.minWidth * currentZoom) - containerW) / currentZoom
+    const clampedX = Math.max(minScrollX, Math.min(0, scrollX))
 
-      updates.zoom = { value: minZoom }
+    // Clamp Y - prevent panning outside combined image bounds vertically
+    const minScrollY = -((imageData.totalHeight * currentZoom) - containerH) / currentZoom
+    const clampedY = Math.max(minScrollY, Math.min(0, scrollY))
+
+    if (clampedX !== scrollX || clampedY !== scrollY) {
       updates.scrollX = clampedX
       updates.scrollY = clampedY
       needsUpdate = true
-    } else {
-      // Clamp X - prevent panning outside image bounds horizontally
-      const minScrollX = -((imageData.minWidth * currentZoom) - containerW) / currentZoom
-      const clampedX = Math.max(minScrollX, Math.min(0, scrollX))
-
-      // Clamp Y - prevent panning outside combined image bounds vertically
-      const minScrollY = -((imageData.totalHeight * currentZoom) - containerH) / currentZoom
-      const clampedY = Math.max(minScrollY, Math.min(0, scrollY))
-
-      if (clampedX !== scrollX || clampedY !== scrollY) {
-        updates.scrollX = clampedX
-        updates.scrollY = clampedY
-        needsUpdate = true
-      }
     }
 
     if (needsUpdate) {
       excalidrawAPI.updateScene({ appState: updates })
+    }
+  }
+
+  const handleExcalidrawChange = (_elements, appState) => {
+    if (!excalidrawAPI || !imageData || !containerRef.current) return
+
+    const zoomValue = appState.zoom?.value || 1
+    const containerW = containerRef.current.offsetWidth || imageData.minWidth
+    const containerH = containerRef.current.offsetHeight || imageData.totalHeight
+    const effectiveZoom = Math.max(zoomValue, minZoom)
+    const minScrollX = -((imageData.minWidth * effectiveZoom) - containerW) / effectiveZoom
+    const minScrollY = -((imageData.totalHeight * effectiveZoom) - containerH) / effectiveZoom
+
+    if (zoomValue < minZoom) {
+      const restoredScrollX = Math.max(minScrollX, Math.min(0, lastViewportRef.current.scrollX || 0))
+      const restoredScrollY = Math.max(minScrollY, Math.min(0, lastViewportRef.current.scrollY || 0))
+
+      excalidrawAPI.updateScene({
+        appState: {
+          zoom: { value: minZoom },
+          scrollX: restoredScrollX,
+          scrollY: restoredScrollY,
+        },
+      })
+      return
+    }
+
+    lastViewportRef.current = {
+      zoom: zoomValue,
+      scrollX: Math.max(minScrollX, Math.min(0, appState.scrollX || 0)),
+      scrollY: Math.max(minScrollY, Math.min(0, appState.scrollY || 0)),
     }
   }
 
@@ -212,6 +231,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, templateId = 
         title: nextTitle,
         scene: serializedScene,
         templateId: initialScribble.templateId, // Preserve existing templateId
+        formId: formId, // Save scene for current form
       })
       alert('Scribble saved successfully!')
       onClose()
@@ -227,7 +247,8 @@ export default function ScribbleCanvas({ initialScribble, onClose, templateId = 
         id: initialScribble?.id,
         title: nextTitle,
         scene: serializedScene,
-        templateId, // Save current templateId for new scribbles
+        templateId: formId, // Save formId as templateId for new scribbles
+        formId: formId, // Save scene for current form
       })
       onClose()
     }
@@ -257,13 +278,23 @@ export default function ScribbleCanvas({ initialScribble, onClose, templateId = 
 
     const targetFrameId = `frame-${imageIndex}`
     const allElements = excalidrawAPI.getSceneElements()
+    const frame = allElements.find(el => el.id === targetFrameId)
+    
+    if (!frame) return
 
-    // Filter elements: include frame + all elements bound to this frame
+    // Filter elements: include frame + frame children + free-floating scribbles within frame bounds
     const elementsToExport = allElements.filter(el => {
       // Include the frame itself
       if (el.id === targetFrameId) return true
       // Include all elements that are children of this frame
       if (el.frameId === targetFrameId) return true
+      // Include all free-floating scribbles within frame bounds
+      if (el.x >= frame.x && 
+          el.y >= frame.y && 
+          el.x + (el.width || 0) <= frame.x + frame.width &&
+          el.y + (el.height || 0) <= frame.y + frame.height) {
+        return true
+      }
       return false
     })
 
@@ -436,7 +467,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, templateId = 
       {imageData && imageData.images.length > 0 && (
         <div
           style={{
-            display:'none',
+            display:'flex',
             position: 'absolute',
             top: '10px',
             right: '10px',
@@ -459,7 +490,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, templateId = 
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             }}
           >
-            Save JSON
+            Save
           </button>
 
           {/* <button
@@ -502,11 +533,11 @@ export default function ScribbleCanvas({ initialScribble, onClose, templateId = 
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             }}
           >
-            Export All ({imageData.images.length})
+            Export
           </button>
           
           {/* Individual export buttons */}
-          {imageData.images.map((_, index) => (
+          {/* {imageData.images.map((_, index) => (
             <button
               key={index}
               onClick={() => exportImage(index)}
@@ -524,7 +555,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, templateId = 
             >
               Export #{index + 1}
             </button>
-          ))}
+          ))} */}
         </div>
       )}
 
@@ -534,6 +565,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, templateId = 
           console.log("API RECEIVED excalidrawAPI: ", api)
           setExcalidrawAPI(api)
         }}
+        onChange={handleExcalidrawChange}
         onScrollChange={handleScrollChange}
         initialData={initialData}
       />

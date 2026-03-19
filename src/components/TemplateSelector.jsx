@@ -78,7 +78,7 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate }) 
                 <p className="text-sm text-gray-600 mt-1">{template.description}</p>
               </div>
 
-              {/* Image Count */}
+              {/* Form Count */}
               <div className="flex items-center text-xs text-gray-500">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -96,7 +96,7 @@ export default function TemplateSelector({ isOpen, onClose, onSelectTemplate }) 
                   <circle cx="8.5" cy="8.5" r="1.5" />
                   <polyline points="21 15 16 10 5 21" />
                 </svg>
-                {template.images.length} {template.images.length === 1 ? 'image' : 'images'}
+                {template.forms.length} {template.forms.length === 1 ? 'form' : 'forms'}
               </div>
             </div>
           ))}

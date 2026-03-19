@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import ScribbleCanvas from './ScribbleCanvas';
+import FormTabs from './FormTabs';
 
 export default function ScribbleModal({ isOpen, onClose, initialScribble, templateId }) {
   // Prevent body scroll when modal is open
@@ -53,10 +53,10 @@ export default function ScribbleModal({ isOpen, onClose, initialScribble, templa
 
         {/* Canvas area - 90% width centered container */}
         <div className="flex-1 rounded-0  absolute h-full w-[98%] left-0 top-0 overflow-hidden flex items-center justify-center bg-white pt-4">
-            <ScribbleCanvas 
+            <FormTabs 
+            templateId={initialScribble?.templateId || templateId}
             initialScribble={initialScribble} 
             onClose={onClose} 
-            templateId={initialScribble?.templateId || templateId} 
           />
         </div>
     </div>
