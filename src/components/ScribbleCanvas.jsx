@@ -436,11 +436,11 @@ export default function ScribbleCanvas({ initialScribble, onClose, templateId = 
       {imageData && imageData.images.length > 0 && (
         <div
           style={{
+            display:'none',
             position: 'absolute',
             top: '10px',
             right: '10px',
             zIndex: 10000,
-            display: 'flex',
             flexDirection: 'column',
             gap: '8px',
           }}
