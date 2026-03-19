@@ -8,14 +8,9 @@ import {
 } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import { saveScribble } from '../utils/localStorage'
+import { DEFAULT_TEMPLATE_ID, getTemplateById } from '../utils/templates'
 
 const GAP_BETWEEN_IMAGES = 20
-
-// List of images to load from public/images folder
-const IMAGE_PATHS = [
-  '/images/image2.png',
-  '/images/image4.png',
-]
 
 // Helper to load image and get dimensions
 const loadImage = (src) => {
@@ -27,7 +22,7 @@ const loadImage = (src) => {
   })
 }
 
-export default function ScribbleCanvas({ initialScribble, onClose }) {
+export default function ScribbleCanvas({ initialScribble, onClose, templateId = DEFAULT_TEMPLATE_ID }) {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null)
   const [imageData, setImageData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -47,6 +42,10 @@ export default function ScribbleCanvas({ initialScribble, onClose }) {
       return null
     }
   }, [initialScribble])
+
+  // Get template images based on templateId
+  const template = useMemo(() => getTemplateById(templateId), [templateId])
+  const imagePaths = template.images
 
   const applySceneData = (parsedScene) => {
     if (!excalidrawAPI || !imageData || !parsedScene) {
@@ -79,7 +78,7 @@ export default function ScribbleCanvas({ initialScribble, onClose }) {
     const loadAllImages = async () => {
       try {
         const loadedImages = await Promise.all(
-          IMAGE_PATHS.map(path => loadImage(path))
+          imagePaths.map(path => loadImage(path))
         )
 
         // Find minimum width across all images
@@ -123,7 +122,7 @@ export default function ScribbleCanvas({ initialScribble, onClose }) {
     }
 
     loadAllImages()
-  }, [])
+  }, [imagePaths])
 
   // Calculate dynamic MIN_ZOOM based on container width
   useEffect(() => {
@@ -212,6 +211,7 @@ export default function ScribbleCanvas({ initialScribble, onClose }) {
         id: initialScribble.id,
         title: nextTitle,
         scene: serializedScene,
+        templateId: initialScribble.templateId, // Preserve existing templateId
       })
       alert('Scribble saved successfully!')
       onClose()
@@ -227,6 +227,7 @@ export default function ScribbleCanvas({ initialScribble, onClose }) {
         id: initialScribble?.id,
         title: nextTitle,
         scene: serializedScene,
+        templateId, // Save current templateId for new scribbles
       })
       onClose()
     }

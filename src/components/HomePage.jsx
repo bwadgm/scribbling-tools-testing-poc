@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react'
 import ScribbleModal from './ScribbleModal'
+import TemplateSelector from './TemplateSelector'
 import { deleteScribble, getSavedScribbles } from '../utils/localStorage'
 
 export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedScribbleId, setSelectedScribbleId] = useState(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [isTemplateSelectorOpen, setIsTemplateSelectorOpen] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState(null)
 
   const scribbles = useMemo(() => {
     return getSavedScribbles().sort(
@@ -20,18 +23,31 @@ export default function HomePage() {
 
   const openNewScribble = () => {
     setSelectedScribbleId(null)
+    setIsTemplateSelectorOpen(true)
+  }
+
+  const selectTemplate = (template) => {
+    setSelectedTemplate(template)
+    setIsTemplateSelectorOpen(false)
     setIsModalOpen(true)
   }
 
   const openSavedScribble = (scribbleId) => {
     setSelectedScribbleId(scribbleId)
+    const scribble = scribbles.find(s => s.id === scribbleId)
+    setSelectedTemplate(null) // Clear template for saved scribbles
     setIsModalOpen(true)
   }
 
   const closeModal = () => {
     setIsModalOpen(false)
     setSelectedScribbleId(null)
+    setSelectedTemplate(null)
     setRefreshKey((value) => value + 1)
+  }
+
+  const closeTemplateSelector = () => {
+    setIsTemplateSelectorOpen(false)
   }
 
   const handleDelete = (event, scribbleId) => {
@@ -109,6 +125,13 @@ export default function HomePage() {
         isOpen={isModalOpen}
         onClose={closeModal}
         initialScribble={selectedScribble}
+        templateId={selectedTemplate?.id}
+      />
+
+      <TemplateSelector
+        isOpen={isTemplateSelectorOpen}
+        onClose={closeTemplateSelector}
+        onSelectTemplate={selectTemplate}
       />
     </div>
   )

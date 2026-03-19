@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import ScribbleCanvas from './ScribbleCanvas';
 
-export default function ScribbleModal({ isOpen, onClose, initialScribble }) {
+export default function ScribbleModal({ isOpen, onClose, initialScribble, templateId }) {
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -58,7 +58,11 @@ export default function ScribbleModal({ isOpen, onClose, initialScribble }) {
         {/* Canvas area - 90% width centered container */}
         <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-gray-100 pt-4">
           <div style={{ width: '90%', height: '100%', position: 'relative' }}>
-            <ScribbleCanvas initialScribble={initialScribble} onClose={onClose} />
+            <ScribbleCanvas 
+            initialScribble={initialScribble} 
+            onClose={onClose} 
+            templateId={initialScribble?.templateId || templateId} 
+          />
           </div>
         </div>
       </div>
