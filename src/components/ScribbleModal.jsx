@@ -58,7 +58,7 @@ export default function ScribbleModal({ isOpen, onClose, initialScribble }) {
         {/* Canvas area - 90% width centered container */}
         <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-gray-100 pt-4">
           <div style={{ width: '90%', height: '100%', position: 'relative' }}>
-            <ScribbleCanvas initialScribble={initialScribble} />
+            <ScribbleCanvas initialScribble={initialScribble} onClose={onClose} />
           </div>
         </div>
       </div>

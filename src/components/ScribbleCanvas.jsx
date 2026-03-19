@@ -27,7 +27,7 @@ const loadImage = (src) => {
   })
 }
 
-export default function ScribbleCanvas({ initialScribble }) {
+export default function ScribbleCanvas({ initialScribble, onClose }) {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null)
   const [imageData, setImageData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -134,6 +134,20 @@ export default function ScribbleCanvas({ initialScribble }) {
     setMinZoom(calculatedMinZoom)
   }, [imageData])
 
+  // Apply saved scene data with minZoom when opening a saved scribble
+  useEffect(() => {
+    if (excalidrawAPI && imageData && parsedInitialScene) {
+      applySceneData(parsedInitialScene)
+      // Add smooth zoom animation after applying scene data
+      setTimeout(() => {
+        excalidrawAPI.scrollToContent(undefined, {
+          animate: true,
+          duration: 300
+        })
+      }, 100)
+    }
+  }, [excalidrawAPI, imageData, parsedInitialScene])
+
   const handleScrollChange = (scrollX, scrollY) => {
     if (!excalidrawAPI || !imageData) return
     const { zoom } = excalidrawAPI.getAppState()
@@ -188,18 +202,34 @@ export default function ScribbleCanvas({ initialScribble }) {
       'local',
     )
 
-    const currentTitle = initialScribble?.title || 'Untitled Scribble'
-    const nextTitle = window.prompt('Enter scribble title', currentTitle)
+    const isExistingScribble = Boolean(initialScribble?.id && initialScribble?.title)
+    let nextTitle
 
-    if (!nextTitle || !nextTitle.trim()) {
-      return
+    if (isExistingScribble) {
+      nextTitle = initialScribble.title
+      // Save directly and show feedback
+      saveScribble({
+        id: initialScribble.id,
+        title: nextTitle,
+        scene: serializedScene,
+      })
+      alert('Scribble saved successfully!')
+      onClose()
+    } else {
+      // Prompt for title for new scribbles
+      nextTitle = window.prompt('Enter scribble title', 'Untitled Scribble')
+
+      if (!nextTitle || !nextTitle.trim()) {
+        return
+      }
+
+      saveScribble({
+        id: initialScribble?.id,
+        title: nextTitle,
+        scene: serializedScene,
+      })
+      onClose()
     }
-
-    saveScribble({
-      id: initialScribble?.id,
-      title: nextTitle,
-      scene: serializedScene,
-    })
   }
 
   const loadSceneFromFile = async (event) => {
@@ -395,6 +425,10 @@ export default function ScribbleCanvas({ initialScribble }) {
         height: '100%',
         overflow: 'hidden',
         position: 'relative',
+        // Performance optimizations for smooth zoom/pan
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        perspective: '1000px',
       }}
     >
       {/* Export buttons overlay */}
@@ -427,7 +461,7 @@ export default function ScribbleCanvas({ initialScribble }) {
             Save JSON
           </button>
 
-          <button
+          {/* <button
             onClick={() => fileInputRef.current?.click()}
             style={{
               padding: '8px 16px',
@@ -450,7 +484,7 @@ export default function ScribbleCanvas({ initialScribble }) {
             accept='.excalidraw,.json'
             onChange={loadSceneFromFile}
             style={{ display: 'none' }}
-          />
+          /> */}
 
           {/* Export All button */}
           <button
