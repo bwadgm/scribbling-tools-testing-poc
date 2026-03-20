@@ -40,10 +40,10 @@ export default function FormTabs({ templateId, onClose, initialScribble }) {
   if (forms.length === 1) {
     // If only one form, show it directly without tabs
     return (
-      <ScribbleCanvas 
-        initialScribble={initialScribble} 
-        onClose={onClose} 
-        formId={forms[0].id} 
+      <ScribbleCanvas
+        initialScribble={initialScribble}
+        onClose={onClose}
+        formId={forms[0].id}
       />
     )
   }
@@ -57,19 +57,17 @@ export default function FormTabs({ templateId, onClose, initialScribble }) {
         {forms.map((form, index) => (
           <div
             key={form.id}
-            className={`flex items-center border-b-2 transition-colors ${
-              index === activeFormIndex
-                ? 'border-blue-500 bg-white'
-                : 'border-transparent'
-            }`}
+            className={`flex items-center border-b-2 transition-colors ${index === activeFormIndex
+              ? 'border-blue-500 bg-white'
+              : 'border-transparent'
+              }`}
           >
             <button
               onClick={() => setActiveFormIndex(index)}
-              className={`px-4 py-3 text-sm font-medium transition-colors ${
-                index === activeFormIndex
-                  ? 'text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              className={`px-4 py-3 text-sm font-medium transition-colors ${index === activeFormIndex
+                ? 'text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+                }`}
             >
               {form.name}
             </button>
@@ -100,12 +98,12 @@ export default function FormTabs({ templateId, onClose, initialScribble }) {
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 p-4 overflow-hidden">
-        <ScribbleCanvas 
+      <div className="flex-1 p-4 overflow-auto scroll-smooth">
+        <ScribbleCanvas
           key={activeForm.id} // Force re-render when switching forms
-          initialScribble={initialScribble} 
-          onClose={onClose} 
-          formId={activeForm.id} 
+          initialScribble={initialScribble}
+          onClose={onClose}
+          formId={activeForm.id}
         />
       </div>
 

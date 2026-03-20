@@ -16,7 +16,7 @@ const GAP_BETWEEN_IMAGES = 20
 const loadImage = (src) => {
   return new Promise((resolve, reject) => {
     const img = new Image()
-    img.onload = () => resolve({ src, width: img.naturalWidth, height: img.naturalHeight})
+    img.onload = () => resolve({ src, width: img.naturalWidth, height: img.naturalHeight })
     img.onerror = reject
     img.src = src
   })
@@ -29,7 +29,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   const [minZoom, setMinZoom] = useState(1)
   const [showScrollSettings, setShowScrollSettings] = useState(false)
   const [isHandToolActive, setIsHandToolActive] = useState(false)
-  
+
   const [touchScrollSettings, setTouchScrollSettings] = useState(() => {
     const saved = localStorage.getItem('touchScrollSettings')
     return saved ? JSON.parse(saved) : {
@@ -38,11 +38,11 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
       momentumEnabled: false
     }
   })
-  
+
   const containerRef = useRef(null)
   const fileInputRef = useRef(null)
   const lastViewportRef = useRef({ zoom: 1, scrollX: 0, scrollY: 0 })
-  
+
   useEffect(() => {
     localStorage.setItem('touchScrollSettings', JSON.stringify(touchScrollSettings))
   }, [touchScrollSettings])
@@ -219,12 +219,12 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
 
   const handleWheelScroll = (e) => {
     if (!excalidrawAPI || !isHandToolActive) return
-    
+
     e.preventDefault()
-    
+
     const { scrollX, scrollY, zoom } = excalidrawAPI.getAppState()
     const scrollMultiplier = 1.5
-    
+
     excalidrawAPI.updateScene({
       appState: {
         scrollX: scrollX - (e.deltaX * scrollMultiplier) / zoom.value,
@@ -295,16 +295,16 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
     const targetFrameId = `frame-${imageIndex}`
     const allElements = excalidrawAPI.getSceneElements()
     const frame = allElements.find(el => el.id === targetFrameId)
-    
+
     if (!frame) return
 
     const elementsToExport = allElements.filter(el => {
       if (el.id === targetFrameId) return true
       if (el.frameId === targetFrameId) return true
-      if (el.x >= frame.x && 
-          el.y >= frame.y && 
-          el.x + (el.width || 0) <= frame.x + frame.width &&
-          el.y + (el.height || 0) <= frame.y + frame.height) {
+      if (el.x >= frame.x &&
+        el.y >= frame.y &&
+        el.x + (el.width || 0) <= frame.x + frame.width &&
+        el.y + (el.height || 0) <= frame.y + frame.height) {
         return true
       }
       return false
@@ -433,35 +433,33 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
 
   const initialData = parsedInitialScene
     ? {
-        elements: parsedInitialScene.elements || [],
-        appState: {
-          ...(parsedInitialScene.appState || {}),
-          viewBackgroundColor: 'transparent',
-        },
-        files: parsedInitialScene.files || {},
-      }
+      elements: parsedInitialScene.elements || [],
+      appState: {
+        ...(parsedInitialScene.appState || {}),
+        viewBackgroundColor: 'transparent',
+      },
+      files: parsedInitialScene.files || {},
+    }
     : {
-        elements,
-        appState: {
-          scrollX: 0,
-          scrollY: 0,
-          zoom: { value: minZoom },
-          viewBackgroundColor: 'transparent',
-        },
-        files,
-      }
+      elements,
+      appState: {
+        scrollX: 0,
+        scrollY: 0,
+        zoom: { value: minZoom },
+        viewBackgroundColor: 'transparent',
+      },
+      files,
+    }
 
   return (
     <div
       ref={containerRef}
       style={{
         width: '100%',
-        height: '100%',
+        height: '3000px',
         overflow: 'hidden',
         position: 'relative',
-        transform: 'translateZ(0)',
-        backfaceVisibility: 'hidden',
-        perspective: '1000px',
+        pointerEvents: `{${isHandToolActive ? 'none' : 'all'}}`
       }}
     >
       {showScrollSettings && (
@@ -474,16 +472,17 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
 
       {isHandToolActive && (
         <div
-          onWheel={handleWheelScroll}
+          // onWheel={handleWheelScroll}
+          id="my-cool-overlay"
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 1,
+            zIndex: 100,
             cursor: 'grab',
-            pointerEvents: 'auto',
+            // pointerEvents: 'auto',
           }}
         />
       )}
@@ -491,11 +490,11 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
       {imageData && imageData.images.length > 0 && (
         <div
           style={{
-            display:'flex',
+            display: 'flex',
             position: 'absolute',
             top: '10px',
             right: '10px',
-            zIndex: 10000,
+            zIndex: 10,
             flexDirection: 'column',
             gap: '8px',
           }}
