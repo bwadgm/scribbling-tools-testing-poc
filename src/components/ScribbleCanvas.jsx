@@ -447,6 +447,12 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         scrollY: 0,
         zoom: { value: minZoom },
         viewBackgroundColor: 'transparent',
+        frameRendering: {
+          enabled: true,
+          clip: true,
+          name: true,
+          outline: true,
+        },
       },
       files,
     }
@@ -456,7 +462,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
       ref={containerRef}
       style={{
         width: '100%',
-        height: '3000px',
+        height: (isHandToolActive && imageData?.totalHeight) ? `${imageData.totalHeight}px` : '100%',
         overflow: 'hidden',
         position: 'relative',
         pointerEvents: `{${isHandToolActive ? 'none' : 'all'}}`
@@ -480,7 +486,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 100,
+            zIndex: 3,
             cursor: 'grab',
             // pointerEvents: 'auto',
           }}
@@ -562,6 +568,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         onScrollChange={handleScrollChange}
         initialData={initialData}
         touchScrollSpeed={touchScrollSettings}
+        // disableContextMenu={true}
       />
     </div>
   )
