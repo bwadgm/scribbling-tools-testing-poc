@@ -189,12 +189,6 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   const handleExcalidrawChange = (_elements, appState) => {
     if (!excalidrawAPI || !imageData || !containerRef.current) return
 
-    // Track hand tool state
-    const handToolActive = appState.activeTool?.type === 'hand'
-    if (handToolActive !== isHandToolActive) {
-      setIsHandToolActive(handToolActive)
-    }
-
     const zoomValue = appState.zoom?.value || 1
     const containerW = containerRef.current.offsetWidth || imageData.minWidth
     const containerH = containerRef.current.offsetHeight || imageData.totalHeight
@@ -224,7 +218,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   }
 
   const handleWheelScroll = (e) => {
-    if (!excalidrawAPI || !isHandToolActive) return
+    if (!excalidrawAPI) return
 
     e.preventDefault()
 
@@ -468,10 +462,10 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
       ref={containerRef}
       style={{
         width: '100%',
-        height: useDefaultScroll ? '100%' : ((isHandToolActive && imageData?.totalHeight) ? `${imageData.totalHeight * minZoom}px` : '100%'),
+        height: '100%',
         overflow: 'hidden',
         position: 'relative',
-        pointerEvents: `{${isHandToolActive ? 'none' : 'all'}}`
+        pointerEvents: 'all'
       }}
     >
       {showScrollSettings && (
@@ -479,23 +473,6 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
           settings={touchScrollSettings}
           onUpdate={(key, value) => setTouchScrollSettings(prev => ({ ...prev, [key]: value }))}
           onClose={() => setShowScrollSettings(false)}
-        />
-      )}
-
-      {!useDefaultScroll && isHandToolActive && (
-        <div
-          // onWheel={handleWheelScroll}
-          id="my-cool-overlay"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 3,
-            cursor: 'grab',
-            // pointerEvents: 'auto',
-          }}
         />
       )}
 
@@ -561,44 +538,6 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
           >
             ⚙️ Scroll
           </button>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: '500', color: '#374151' }}>Default Scroll</span>
-            <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={useDefaultScroll}
-                onChange={(e) => setUseDefaultScroll(e.target.checked)}
-                style={{ opacity: 0, width: 0, height: 0 }}
-              />
-              <span
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: useDefaultScroll ? '#10b981' : '#e5e7eb',
-                  borderRadius: '12px',
-                  transition: 'background-color 0.2s',
-                }}
-              >
-                <span
-                  style={{
-                    position: 'absolute',
-                    height: '18px',
-                    width: '18px',
-                    left: useDefaultScroll ? '23px' : '3px',
-                    bottom: '3px',
-                    backgroundColor: 'white',
-                    borderRadius: '50%',
-                    transition: 'left 0.2s',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  }}
-                />
-              </span>
-            </label>
-          </div>
         </div>
       )}
 
