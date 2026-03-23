@@ -29,13 +29,15 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   const [minZoom, setMinZoom] = useState(1)
   const [showScrollSettings, setShowScrollSettings] = useState(false)
   const [isHandToolActive, setIsHandToolActive] = useState(false)
+  const [useDefaultScroll, setUseDefaultScroll] = useState(() => {
+    const saved = localStorage.getItem('useDefaultScroll')
+    return saved ? JSON.parse(saved) : false
+  })
 
   const [touchScrollSettings, setTouchScrollSettings] = useState(() => {
     const saved = localStorage.getItem('touchScrollSettings')
     return saved ? JSON.parse(saved) : {
-      handToolMultiplier: 4,
-      pinchGestureMultiplier: 6,
-      momentumEnabled: false
+      scrollSensitivity: 1.5
     }
   })
 
@@ -46,6 +48,10 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   useEffect(() => {
     localStorage.setItem('touchScrollSettings', JSON.stringify(touchScrollSettings))
   }, [touchScrollSettings])
+
+  useEffect(() => {
+    localStorage.setItem('useDefaultScroll', JSON.stringify(useDefaultScroll))
+  }, [useDefaultScroll])
 
   const parsedInitialScene = useMemo(() => {
     if (initialScribble?.scenes && initialScribble.scenes[formId]) {
@@ -462,7 +468,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
       ref={containerRef}
       style={{
         width: '100%',
-        height: (isHandToolActive && imageData?.totalHeight) ? `${imageData.totalHeight}px` : '100%',
+        height: useDefaultScroll ? '100%' : ((isHandToolActive && imageData?.totalHeight) ? `${imageData.totalHeight * minZoom}px` : '100%'),
         overflow: 'hidden',
         position: 'relative',
         pointerEvents: `{${isHandToolActive ? 'none' : 'all'}}`
@@ -476,7 +482,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         />
       )}
 
-      {isHandToolActive && (
+      {!useDefaultScroll && isHandToolActive && (
         <div
           // onWheel={handleWheelScroll}
           id="my-cool-overlay"
@@ -555,6 +561,44 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
           >
             ⚙️ Scroll
           </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
+            <span style={{ fontSize: '12px', fontWeight: '500', color: '#374151' }}>Default Scroll</span>
+            <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={useDefaultScroll}
+                onChange={(e) => setUseDefaultScroll(e.target.checked)}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: useDefaultScroll ? '#10b981' : '#e5e7eb',
+                  borderRadius: '12px',
+                  transition: 'background-color 0.2s',
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    height: '18px',
+                    width: '18px',
+                    left: useDefaultScroll ? '23px' : '3px',
+                    bottom: '3px',
+                    backgroundColor: 'white',
+                    borderRadius: '50%',
+                    transition: 'left 0.2s',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  }}
+                />
+              </span>
+            </label>
+          </div>
         </div>
       )}
 
@@ -567,7 +611,10 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         onChange={handleExcalidrawChange}
         onScrollChange={handleScrollChange}
         initialData={initialData}
-        touchScrollSpeed={touchScrollSettings}
+        touchScrollSpeed={{
+          handToolMultiplier: touchScrollSettings.scrollSensitivity,
+          pinchGestureMultiplier: touchScrollSettings.scrollSensitivity,
+        }}
         // disableContextMenu={true}
       />
     </div>
