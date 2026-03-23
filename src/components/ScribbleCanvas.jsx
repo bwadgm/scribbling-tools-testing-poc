@@ -462,7 +462,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
       ref={containerRef}
       style={{
         width: '100%',
-        height: (isHandToolActive && imageData?.totalHeight) ? `${imageData.totalHeight}px` : '100%',
+        height: (isHandToolActive && imageData?.totalHeight) ? `${imageData.totalHeight * minZoom}px` : '100%',
         overflow: 'hidden',
         position: 'relative',
         pointerEvents: `{${isHandToolActive ? 'none' : 'all'}}`
