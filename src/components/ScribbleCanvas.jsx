@@ -606,6 +606,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         // onScrollChange={handleScrollChange}
         initialData={initialData}
         scrollSensitivity={scrollSensitivity}
+        minZoom={minZoom}
       />
     </div>
   )
