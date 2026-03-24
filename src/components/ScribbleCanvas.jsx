@@ -27,9 +27,18 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   const [imageData, setImageData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [minZoom, setMinZoom] = useState(1)
+  const [scrollSensitivity, setScrollSensitivity] = useState(() => {
+    const saved = localStorage.getItem('scrollSensitivity')
+    return saved ? Number(saved) : 2
+  })
+  const [isSensitivityPanelOpen, setIsSensitivityPanelOpen] = useState(false)
   const containerRef = useRef(null)
   const fileInputRef = useRef(null)
   const lastViewportRef = useRef({ zoom: 1, scrollX: 0, scrollY: 0 })
+
+  useEffect(() => {
+    localStorage.setItem('scrollSensitivity', String(scrollSensitivity))
+  }, [scrollSensitivity])
 
   const parsedInitialScene = useMemo(() => {
     // Handle new scenes object structure (per form)
@@ -493,13 +502,13 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
             Save
           </button>
 
-          {/* <button
-            onClick={() => fileInputRef.current?.click()}
+          <button
+            onClick={() => setIsSensitivityPanelOpen(true)}
             style={{
               padding: '8px 16px',
-              backgroundColor: '#0f766e',
-              color: 'white',
-              border: 'none',
+              backgroundColor: '#ffffff',
+              color: '#111827',
+              border: '1px solid #d1d5db',
               borderRadius: '6px',
               cursor: 'pointer',
               fontSize: '13px',
@@ -507,18 +516,67 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             }}
           >
-            Load JSON
+            Sensitivity
           </button>
 
-          <input
-            ref={fileInputRef}
-            type='file'
-            accept='.excalidraw,.json'
-            onChange={loadSceneFromFile}
-            style={{ display: 'none' }}
-          /> */}
+          {isSensitivityPanelOpen && (
+            <div
+              style={{
+                padding: '10px 12px',
+                backgroundColor: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  marginBottom: '6px',
+                }}
+              >
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: '0',
+                  }}
+                >
+                  Scroll Sensitivity: {scrollSensitivity.toFixed(1)}
+                </label>
+                <button
+                  onClick={() => setIsSensitivityPanelOpen(false)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#6b7280',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    lineHeight: 1,
+                    padding: '0',
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="5"
+                step="0.1"
+                value={scrollSensitivity}
+                onChange={(event) => setScrollSensitivity(Number(event.target.value))}
+                style={{ width: '180px' }}
+              />
+            </div>
+          )}
 
-          {/* Export All button */}
           <button
             onClick={exportAllImages}
             style={{
@@ -535,27 +593,6 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
           >
             Export
           </button>
-          
-          {/* Individual export buttons */}
-          {/* {imageData.images.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => exportImage(index)}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: 'white',
-                color: '#374151',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '500',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              }}
-            >
-              Export #{index + 1}
-            </button>
-          ))} */}
         </div>
       )}
 
@@ -568,6 +605,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         onChange={handleExcalidrawChange}
         onScrollChange={handleScrollChange}
         initialData={initialData}
+        scrollSensitivity={scrollSensitivity}
       />
     </div>
   )
