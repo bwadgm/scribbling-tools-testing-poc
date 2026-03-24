@@ -149,12 +149,12 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
     if (excalidrawAPI && imageData && parsedInitialScene) {
       applySceneData(parsedInitialScene)
       // Add smooth zoom animation after applying scene data
-      setTimeout(() => {
-        excalidrawAPI.scrollToContent(undefined, {
-          animate: true,
-          duration: 300
-        })
-      }, 100)
+      // setTimeout(() => {
+      //   excalidrawAPI.scrollToContent(undefined, {
+      //     animate: true,
+      //     duration: 300
+      //   })
+      // }, 100)
     }
   }, [excalidrawAPI, imageData, parsedInitialScene])
 
@@ -602,8 +602,8 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
           console.log("API RECEIVED excalidrawAPI: ", api)
           setExcalidrawAPI(api)
         }}
-        onChange={handleExcalidrawChange}
-        onScrollChange={handleScrollChange}
+        // onChange={handleExcalidrawChange}
+        // onScrollChange={handleScrollChange}
         initialData={initialData}
         scrollSensitivity={scrollSensitivity}
       />
