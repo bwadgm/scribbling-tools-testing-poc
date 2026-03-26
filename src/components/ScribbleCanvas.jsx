@@ -9,6 +9,7 @@ import {
 import '@excalidraw/excalidraw/index.css'
 import { saveScribble } from '../utils/localStorage'
 import { DEFAULT_TEMPLATE_ID, getFormById } from '../utils/templates'
+import useAutosave from '../utils/useAutosave'
 
 const GAP_BETWEEN_IMAGES = 20
 
@@ -35,6 +36,23 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   const containerRef = useRef(null)
   const fileInputRef = useRef(null)
   const lastViewportRef = useRef({ zoom: 1, scrollX: 0, scrollY: 0 })
+
+  // // ---- Autosave setup ----
+  // // Stable ID: reuse existing or generate once for a new scribble.
+  // const scribbleIdRef = useRef(initialScribble?.id || crypto.randomUUID())
+  // const isNewScribble = !initialScribble?.id
+  // const scribbleTitle = initialScribble?.title || 'Untitled Scribble'
+  // const effectiveTemplateId = initialScribble?.templateId || formId
+
+  // useAutosave({
+  //   excalidrawAPI,
+  //   scribbleId: scribbleIdRef.current,
+  //   scribbleTitle,
+  //   templateId: effectiveTemplateId,
+  //   formId,
+  //   isNewScribble,
+  //   enabled: true,
+  // })
 
   useEffect(() => {
     localStorage.setItem('scrollSensitivity', String(scrollSensitivity))
@@ -473,7 +491,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
       }}
     >
       {/* Export buttons overlay */}
-      {imageData && imageData.images.length > 0 && (
+      {/* {imageData && imageData.images.length > 0 && (
         <div
           style={{
             display:'flex',
@@ -594,7 +612,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
             Export
           </button>
         </div>
-      )}
+      )} */}
 
       <Excalidraw
         key={initialScribble?.id || 'new-scribble'}
