@@ -544,9 +544,9 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
           </div>
           <input
             type="range"
-            min="0.5"
-            max="100"
-            step="0.1"
+            min="0.4"
+            max="6"
+            step="0.2"
             value={scrollSensitivity}
             onChange={(event) => setScrollSensitivity(Number(event.target.value))}
             style={{ width: '180px' }}
