@@ -9,6 +9,7 @@ import {
 import '@excalidraw/excalidraw/index.css'
 import { saveScribble } from '../utils/localStorage'
 import { DEFAULT_TEMPLATE_ID, getFormById } from '../utils/templates'
+import ToolbarButton from './ToolbarButton'
 
 const GAP_BETWEEN_IMAGES = 20
 
@@ -472,127 +473,66 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         perspective: '1000px',
       }}
     >
-      {/* Export buttons overlay */}
-      {imageData && imageData.images.length > 0 && (
+      {/* Sensitivity panel overlay */}
+      {imageData && imageData.images.length > 0 && isSensitivityPanelOpen && (
         <div
           style={{
-            display:'flex',
             position: 'absolute',
             top: '10px',
             right: '10px',
+            padding: '10px 12px',
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             zIndex: 10000,
-            flexDirection: 'column',
-            gap: '8px',
           }}
         >
-          <button
-            onClick={saveSceneAsJSON}
+          <div
             style={{
-              padding: '8px 16px',
-              backgroundColor: '#111827',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: '600',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              marginBottom: '6px',
             }}
           >
-            Save
-          </button>
-
-          <button
-            onClick={() => setIsSensitivityPanelOpen(true)}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#ffffff',
-              color: '#111827',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: '600',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            }}
-          >
-            Sensitivity
-          </button>
-
-          {isSensitivityPanelOpen && (
-            <div
+            <label
               style={{
-                padding: '10px 12px',
-                backgroundColor: 'white',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '0',
               }}
             >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                  marginBottom: '6px',
-                }}
-              >
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '0',
-                  }}
-                >
-                  Scroll Sensitivity: {scrollSensitivity.toFixed(1)}
-                </label>
-                <button
-                  onClick={() => setIsSensitivityPanelOpen(false)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#6b7280',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    fontWeight: '700',
-                    lineHeight: 1,
-                    padding: '0',
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <input
-                type="range"
-                min="0.5"
-                max="5"
-                step="0.1"
-                value={scrollSensitivity}
-                onChange={(event) => setScrollSensitivity(Number(event.target.value))}
-                style={{ width: '180px' }}
-              />
-            </div>
-          )}
-
-          <button
-            onClick={exportAllImages}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#4f46e5',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: '600',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            }}
-          >
-            Export
-          </button>
+              Scroll Sensitivity: {scrollSensitivity.toFixed(1)}
+            </label>
+            <button
+              onClick={() => setIsSensitivityPanelOpen(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#6b7280',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: '700',
+                lineHeight: 1,
+                padding: '0',
+              }}
+            >
+              ×
+            </button>
+          </div>
+          <input
+            type="range"
+            min="0.5"
+            max="100"
+            step="0.1"
+            value={scrollSensitivity}
+            onChange={(event) => setScrollSensitivity(Number(event.target.value))}
+            style={{ width: '180px' }}
+          />
         </div>
       )}
 
@@ -607,6 +547,29 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         initialData={initialData}
         scrollSensitivity={scrollSensitivity}
         minZoom={minZoom}
+        renderTopRightUI={() => (
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {imageData && imageData.images.length > 0 && (
+              <>
+                {/* <ToolbarButton 
+                  onClick={saveSceneAsJSON}
+                  title="Save"
+                  icon="💾"
+                /> */}
+                {/* <ToolbarButton 
+                  onClick={exportAllImages}
+                  title="Export"
+                  icon="📤"
+                /> */}
+              </>
+            )}
+            <ToolbarButton 
+              onClick={() => setIsSensitivityPanelOpen(true)}
+              title="Scroll sensitivity"
+              icon="🖱️"
+            />
+          </div>
+        )}
       />
     </div>
   )
