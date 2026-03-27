@@ -10,6 +10,7 @@ import '@excalidraw/excalidraw/index.css'
 import { saveScribble } from '../utils/localStorage'
 import { DEFAULT_TEMPLATE_ID, getFormById } from '../utils/templates'
 import ToolbarButton from './ToolbarButton'
+import useAutosave from '../utils/useAutosave'
 
 const GAP_BETWEEN_IMAGES = 20
 
@@ -36,6 +37,23 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   const containerRef = useRef(null)
   const fileInputRef = useRef(null)
   const lastViewportRef = useRef({ zoom: 1, scrollX: 0, scrollY: 0 })
+
+  // ---- Autosave setup ----
+  // Stable ID: reuse existing or generate once for a new scribble.
+  const scribbleIdRef = useRef(initialScribble?.id || `scribble-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
+  const isNewScribble = !initialScribble?.id
+  const scribbleTitle = initialScribble?.title || 'Untitled Scribble'
+  const effectiveTemplateId = initialScribble?.templateId || formId
+
+  useAutosave({
+    excalidrawAPI,
+    scribbleId: scribbleIdRef.current,
+    scribbleTitle,
+    templateId: effectiveTemplateId,
+    formId,
+    isNewScribble,
+    enabled: true,
+  })
 
   useEffect(() => {
     localStorage.setItem('scrollSensitivity', String(scrollSensitivity))
