@@ -563,6 +563,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         // onChange={handleExcalidrawChange}
         // onScrollChange={handleScrollChange}
         initialData={initialData}
+        strokeWidthSlider={true}
         scrollSensitivity={scrollSensitivity}
         minZoom={minZoom}
         renderTopRightUI={() => (
