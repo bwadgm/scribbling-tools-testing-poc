@@ -30,7 +30,7 @@ export const getSavedScribbleById = (id) => {
   return readScribbles().find((scribble) => scribble.id === id) || null
 }
 
-export const saveScribble = ({ id, title, scene, templateId, formId }) => {
+export const saveScribble = ({ id, title, scene, templateId, formId, formIds }) => {
   const scribbles = readScribbles()
   const now = new Date().toISOString()
   const trimmedTitle = title.trim()
@@ -49,6 +49,7 @@ export const saveScribble = ({ id, title, scene, templateId, formId }) => {
               [formId]: scene
             },
             templateId: templateId || scribble.templateId,
+            ...(formIds ? { formIds } : {}),
             updatedAt: now,
           }
         : scribble,
@@ -67,12 +68,32 @@ export const saveScribble = ({ id, title, scene, templateId, formId }) => {
       [formId]: scene
     },
     templateId,
+    ...(formIds ? { formIds } : {}),
     createdAt: now,
     updatedAt: now,
   }
 
   writeScribbles([nextScribble, ...scribbles])
   return nextId
+}
+
+export const deleteFormScene = (scribbleId, formId) => {
+  const scribbles = readScribbles()
+  const updated = scribbles.map((scribble) => {
+    if (scribble.id !== scribbleId) return scribble
+    const updatedScenes = { ...scribble.scenes }
+    delete updatedScenes[formId]
+    const updatedFormIds = scribble.formIds
+      ? scribble.formIds.filter((id) => id !== formId)
+      : undefined
+    return {
+      ...scribble,
+      scenes: updatedScenes,
+      ...(updatedFormIds !== undefined ? { formIds: updatedFormIds } : {}),
+      updatedAt: new Date().toISOString(),
+    }
+  })
+  writeScribbles(updated)
 }
 
 export const deleteScribble = (id) => {

@@ -14,6 +14,7 @@ import ToolbarButton from './ToolbarButton'
 import useAutosave from '../utils/useAutosave'
 
 const GAP_BETWEEN_IMAGES = 20
+const EXTRA_PAGE_PATH = '/images/extra_page.png'
 
 // Helper to load image and get dimensions
 const loadImage = (src) => {
@@ -25,11 +26,12 @@ const loadImage = (src) => {
   })
 }
 
-export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFAULT_TEMPLATE_ID }) {
+export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFAULT_TEMPLATE_ID, formIds }) {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null)
   const [imageData, setImageData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [minZoom, setMinZoom] = useState(1)
+  const [imagePaths, setImagePaths] = useState([])
   const [scrollSensitivity, setScrollSensitivity] = useState(() => {
     const saved = localStorage.getItem('scrollSensitivity')
     return saved ? Number(saved) : 2
@@ -52,6 +54,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
     scribbleTitle,
     templateId: effectiveTemplateId,
     formId,
+    formIds,
     isNewScribble,
     enabled: true,
   })
@@ -76,7 +79,15 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
 
   // Get form images based on formId
   const form = useMemo(() => getFormById(formId), [formId])
-  const imagePaths = form.images
+
+  useEffect(() => {
+    if (form && form.images) {
+      setImagePaths(form.images)
+    } else {
+      console.error(`Form not found or has no images: ${formId}`)
+      setImagePaths([])
+    }
+  }, [form])
 
   const applySceneData = (parsedScene) => {
     if (!excalidrawAPI || !imageData || !parsedScene) {
@@ -300,7 +311,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
       )}
 
       <Excalidraw
-        key={initialScribble?.id || 'new-scribble'}
+        key={`${initialScribble?.id || 'new-scribble'}-${imagePaths.length}`}
         onExcalidrawAPI={(api) => {
           console.log("API RECEIVED excalidrawAPI: ", api)
           setExcalidrawAPI(api)
@@ -315,6 +326,11 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {imageData && imageData.images.length > 0 && (
               <>
+                <ToolbarButton 
+                  onClick={() => setImagePaths((prev) => [...prev, EXTRA_PAGE_PATH])}
+                  title="Add blank page"
+                  icon="📄"
+                />
                 {/* <ToolbarButton 
                   onClick={saveSceneAsJSON}
                   title="Save"
