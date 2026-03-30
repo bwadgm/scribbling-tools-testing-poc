@@ -173,3 +173,81 @@ export function getPageInfo(elementSkeletons, pageIndex) {
     height: element.height,
   };
 }
+
+/**
+ * Generate Excalidraw elements with frames for loaded images.
+ * Creates image and frame elements for each image in the list.
+ * IMPORTANT: Children must come BEFORE frame in array (Excalidraw requirement).
+ */
+export function generatePageElements(imageData) {
+  const elements = [];
+
+  imageData.images.forEach((img, index) => {
+    const frameId = `frame-${index}`;
+
+    // 1. Create image element FIRST (child comes before frame)
+    elements.push({
+      id: img.id,
+      type: 'image',
+      x: img.x,
+      y: img.y,
+      width: img.width,
+      height: img.height,
+      angle: 0,
+      strokeColor: 'transparent',
+      backgroundColor: 'transparent',
+      fillStyle: 'solid',
+      strokeWidth: 0,
+      strokeStyle: 'solid',
+      roughness: 0,
+      opacity: 100,
+      groupIds: [],
+      frameId: frameId, // Bind image to its frame
+      roundness: null,
+      seed: index * 100 + 2,
+      version: 1,
+      versionNonce: index * 100 + 2,
+      isDeleted: false,
+      boundElements: null,
+      updated: Date.now(),
+      link: null,
+      locked: true,
+      fileId: img.id,
+      scale: [1, 1],
+      status: 'saved',
+    });
+
+    // 2. Create frame element AFTER children
+    elements.push({
+      id: frameId,
+      type: 'frame',
+      x: img.x,
+      y: img.y,
+      width: img.width,
+      height: img.height,
+      angle: 0,
+      strokeColor: '#868e96',
+      backgroundColor: 'transparent',
+      fillStyle: 'solid',
+      strokeWidth: 2,
+      strokeStyle: 'solid',
+      roughness: 0,
+      opacity: 100,
+      groupIds: [],
+      frameId: null,
+      roundness: null,
+      seed: index * 100 + 1,
+      version: 1,
+      versionNonce: index * 100 + 1,
+      isDeleted: false,
+      boundElements: null,
+      updated: Date.now(),
+      link: null,
+      locked: true,
+      name: `Image ${index + 1}`,
+      children: [img.id], // Frame contains the image as child
+    });
+  });
+
+  return elements;
+}
