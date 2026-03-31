@@ -24,6 +24,18 @@ export const FORMS = {
     ],
     thumbnail: '/images/cardioOP/cardio_1.webp',
   },
+   'test-form': {
+    id: 'test-form',
+    name: 'Test - Form',
+    description: 'Test outpatient form',
+    images: [
+      '/images/cardioOP/cardio_1.webp',
+      '/images/generalOP/gen_2.webp',
+      '/images/cardioOP/cardio_3.webp',
+      '/images/extra_page.png'
+    ],
+    thumbnail: '/images/cardioOP/cardio_1.webp',
+  },
 }
 
 // Templates configuration - parent containers that hold multiple forms

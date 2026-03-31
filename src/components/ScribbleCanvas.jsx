@@ -307,6 +307,9 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         }}
         // onChange={handleExcalidrawChange}
         // onScrollChange={handleScrollChange}
+        hideMainMenu={true}
+        hideLibrary={true}
+        hideHelp={true}
         initialData={initialData}
         strokeWidthSlider={true}
         scrollSensitivity={scrollSensitivity}
