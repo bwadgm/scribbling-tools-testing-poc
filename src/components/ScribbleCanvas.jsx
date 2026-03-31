@@ -1,13 +1,10 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Excalidraw } from '@excalidraw/excalidraw'
-import { exportToBlob } from '@excalidraw/excalidraw'
 import {
+  Excalidraw,
   restoreAppState,
   restoreElements,
-  serializeAsJSON,
 } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
-import { saveScribble } from '../utils/localStorage'
 import { DEFAULT_TEMPLATE_ID, getFormById } from '../utils/templates'
 import { generatePageElements } from '../utils/imageHelpers'
 import ToolbarButton from './ToolbarButton'
@@ -25,6 +22,14 @@ const loadImage = (src) => {
   })
 }
 
+const StatusMessage = ({ text }) => {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <p>{text}</p>
+    </div>
+  )
+}
+
 export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFAULT_TEMPLATE_ID, formIds }) {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null)
   const [imageData, setImageData] = useState(null)
@@ -34,7 +39,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
     const saved = localStorage.getItem('scrollSensitivity')
     return saved ? Number(saved) : 2
   })
-  const [isSensitivityPanelOpen, setIsSensitivityPanelOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const containerRef = useRef(null)
   const fileInputRef = useRef(null)
   const lastViewportRef = useRef({ zoom: 1, scrollX: 0, scrollY: 0 })
@@ -176,19 +181,11 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   }, [excalidrawAPI, imageData, parsedInitialScene])
 
   if (isLoading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-        <p>Loading images...</p>
-      </div>
-    )
+    return <StatusMessage text="Loading images..." />
   }
 
   if (!imageData) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-        <p>Failed to load images</p>
-      </div>
-    )
+    return <StatusMessage text="Failed to load images" />
   }
 
   // Generate Excalidraw elements with frames
@@ -229,78 +226,54 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   return (
     <div
       ref={containerRef}
-      style={{
-        width: '100%',
-        height: '100%',
-        overflow: 'hidden',
-        position: 'relative',
-        // Performance optimizations for smooth zoom/pan
-        transform: 'translateZ(0)',
-        backfaceVisibility: 'hidden',
-        perspective: '1000px',
-      }}
+      className="h-full w-full overflow-hidden relative"
     >
-      {/* Sensitivity panel overlay */}
-      {imageData && imageData.images.length > 0 && isSensitivityPanelOpen && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            padding: '10px 12px',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            zIndex: 10000,
-          }}
-        >
+      {isMenuOpen && (
+        <>
           <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              marginBottom: '6px',
-            }}
-          >
-            <label
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '0',
-              }}
-            >
-              Scroll Sensitivity: {scrollSensitivity.toFixed(1)}
-            </label>
-            <button
-              onClick={() => setIsSensitivityPanelOpen(false)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#6b7280',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: '700',
-                lineHeight: 1,
-                padding: '0',
-              }}
-            >
-              ×
-            </button>
-          </div>
-          <input
-            type="range"
-            min="0.4"
-            max="6"
-            step="0.2"
-            value={scrollSensitivity}
-            onChange={(event) => setScrollSensitivity(Number(event.target.value))}
-            style={{ width: '180px' }}
+            onClick={() => setIsMenuOpen(false)}
+            className="fixed inset-0 z-[10000] bg-black/35"
           />
-        </div>
+          <div className="fixed right-0 top-0 z-[10001] flex h-screen w-[min(320px,85vw)] flex-col gap-4 bg-white p-4 shadow-[-4px_0_16px_rgba(0,0,0,0.18)]">
+            <div className="flex items-center justify-between">
+              <span className="text-base font-semibold text-gray-900">Menu</span>
+              <button
+                onClick={() => setIsMenuOpen(false)}
+                className="cursor-pointer border-none bg-transparent p-0 text-[20px] leading-none text-gray-500"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {/* <ToolbarButton 
+                onClick={saveSceneAsJSON}
+                title="Save"
+                icon="💾"
+              /> */}
+              {/* <ToolbarButton 
+                onClick={exportAllImages}
+                title="Export"
+                icon="📤"
+              /> */}
+            </div>
+
+            <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <label className="mb-0 block text-xs font-semibold text-gray-700">
+                Scroll Sensitivity: {scrollSensitivity.toFixed(1)}
+              </label>
+              <input
+                type="range"
+                min="0.4"
+                max="6"
+                step="0.2"
+                value={scrollSensitivity}
+                onChange={(event) => setScrollSensitivity(Number(event.target.value))}
+                className="w-full"
+              />
+            </div>
+          </div>
+        </>
       )}
 
       <Excalidraw
@@ -319,25 +292,11 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         scrollSensitivity={scrollSensitivity}
         minZoom={minZoom}
         renderTopRightUI={() => (
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {imageData && imageData.images.length > 0 && (
-              <>
-                {/* <ToolbarButton 
-                  onClick={saveSceneAsJSON}
-                  title="Save"
-                  icon="💾"
-                /> */}
-                {/* <ToolbarButton 
-                  onClick={exportAllImages}
-                  title="Export"
-                  icon="📤"
-                /> */}
-              </>
-            )}
-            <ToolbarButton 
-              onClick={() => setIsSensitivityPanelOpen(true)}
-              title="Scroll sensitivity"
-              icon="🖱️"
+          <div className="flex items-center gap-2">
+            <ToolbarButton
+              onClick={() => setIsMenuOpen(true)}
+              title="Menu"
+              icon="☰"
             />
           </div>
         )}
