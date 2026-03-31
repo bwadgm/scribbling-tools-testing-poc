@@ -174,6 +174,115 @@ export function getPageInfo(elementSkeletons, pageIndex) {
   };
 }
 
+export function createPageElements(img, index, totalPages, ids = {}) {
+  const frameId = ids.frameId || `frame-${index}`;
+  const textId = ids.textId || `text-${index}`;
+
+  const imageElement = {
+    id: img.id,
+    type: 'image',
+    x: img.x,
+    y: img.y,
+    width: img.width,
+    height: img.height,
+    angle: 0,
+    strokeColor: 'transparent',
+    backgroundColor: 'transparent',
+    fillStyle: 'solid',
+    strokeWidth: 0,
+    strokeStyle: 'solid',
+    roughness: 0,
+    opacity: 100,
+    groupIds: [],
+    frameId: frameId,
+    roundness: null,
+    seed: index * 100 + 2,
+    version: 1,
+    versionNonce: index * 100 + 2,
+    isDeleted: false,
+    boundElements: null,
+    updated: Date.now(),
+    link: null,
+    locked: true,
+    fileId: img.id,
+    scale: [1, 1],
+    status: 'saved',
+  };
+
+  const pageNumber = `Page ${index + 1} of ${totalPages}`;
+  const textY = img.y + img.height;
+  const textX = img.x + img.width / 2;
+
+  const textElement = {
+    id: textId,
+    type: 'text',
+    x: textX - 50,
+    y: textY,
+    width: 100,
+    height: 15,
+    angle: 0,
+    strokeColor: '#666666',
+    backgroundColor: 'transparent',
+    fillStyle: 'solid',
+    strokeWidth: 0,
+    strokeStyle: 'solid',
+    roughness: 0,
+    opacity: 100,
+    groupIds: [],
+    frameId: frameId,
+    roundness: null,
+    seed: index * 100 + 3,
+    version: 1,
+    versionNonce: index * 100 + 3,
+    isDeleted: false,
+    boundElements: null,
+    updated: Date.now(),
+    link: null,
+    locked: true,
+    text: pageNumber,
+    fontSize: 10,
+    fontFamily: 3,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+    containerId: null,
+    originalText: pageNumber,
+    autoResize: true,
+    isDetached: false,
+  };
+
+  const frameElement = {
+    id: frameId,
+    type: 'frame',
+    x: img.x,
+    y: img.y,
+    width: img.width,
+    height: img.height,
+    angle: 0,
+    strokeColor: '#868e96',
+    backgroundColor: 'transparent',
+    fillStyle: 'solid',
+    strokeWidth: 2,
+    strokeStyle: 'solid',
+    roughness: 0,
+    opacity: 100,
+    groupIds: [],
+    frameId: null,
+    roundness: null,
+    seed: index * 100 + 1,
+    version: 1,
+    versionNonce: index * 100 + 1,
+    isDeleted: false,
+    boundElements: null,
+    updated: Date.now(),
+    link: null,
+    locked: true,
+    name: `Image ${index + 1}`,
+    children: [img.id, textId],
+  };
+
+  return [imageElement, textElement, frameElement];
+}
+
 /**
  * Generate Excalidraw elements with frames for loaded images.
  * Creates image and frame elements for each image in the list.
@@ -184,113 +293,7 @@ export function generatePageElements(imageData) {
   const totalPages = imageData.images.length;
 
   imageData.images.forEach((img, index) => {
-    const frameId = `frame-${index}`;
-    const textId = `text-${index}`;
-
-    // 1. Create image element FIRST (child comes before frame)
-    elements.push({
-      id: img.id,
-      type: 'image',
-      x: img.x,
-      y: img.y,
-      width: img.width,
-      height: img.height,
-      angle: 0,
-      strokeColor: 'transparent',
-      backgroundColor: 'transparent',
-      fillStyle: 'solid',
-      strokeWidth: 0,
-      strokeStyle: 'solid',
-      roughness: 0,
-      opacity: 100,
-      groupIds: [],
-      frameId: frameId, // Bind image to its frame
-      roundness: null,
-      seed: index * 100 + 2,
-      version: 1,
-      versionNonce: index * 100 + 2,
-      isDeleted: false,
-      boundElements: null,
-      updated: Date.now(),
-      link: null,
-      locked: true,
-      fileId: img.id,
-      scale: [1, 1],
-      status: 'saved',
-    });
-
-    // 2. Create page number text element
-    const pageNumber = `Page ${index + 1} of ${totalPages}`;
-    const textY = img.y + img.height; // 15px from bottom
-    const textX = img.x + img.width / 2; // Center horizontally
-
-    elements.push({
-      id: textId,
-      type: 'text',
-      x: textX - 50, // Offset by half width to center the text
-      y: textY,
-      width: 100,
-      height: 15,
-      angle: 0,
-      strokeColor: '#666666',
-      backgroundColor: 'transparent',
-      fillStyle: 'solid',
-      strokeWidth: 0,
-      strokeStyle: 'solid',
-      roughness: 0,
-      opacity: 100,
-      groupIds: [],
-      frameId: frameId, // Bind text to its frame
-      roundness: null,
-      seed: index * 100 + 3,
-      version: 1,
-      versionNonce: index * 100 + 3,
-      isDeleted: false,
-      boundElements: null,
-      updated: Date.now(),
-      link: null,
-      locked: true,
-      text: pageNumber,
-      fontSize: 10,
-      fontFamily: 3, // Virgil (printed font)
-      textAlign: 'center',
-      verticalAlign: 'middle',
-      containerId: null,
-      originalText: pageNumber,
-      autoResize: true,
-      isDetached: false,
-    });
-
-    // 3. Create frame element AFTER children
-    elements.push({
-      id: frameId,
-      type: 'frame',
-      x: img.x,
-      y: img.y,
-      width: img.width,
-      height: img.height,
-      angle: 0,
-      strokeColor: '#868e96',
-      backgroundColor: 'transparent',
-      fillStyle: 'solid',
-      strokeWidth: 2,
-      strokeStyle: 'solid',
-      roughness: 0,
-      opacity: 100,
-      groupIds: [],
-      frameId: null,
-      roundness: null,
-      seed: index * 100 + 1,
-      version: 1,
-      versionNonce: index * 100 + 1,
-      isDeleted: false,
-      boundElements: null,
-      updated: Date.now(),
-      link: null,
-      locked: true,
-      name: `Image ${index + 1}`,
-      children: [img.id, textId], // Frame contains the image and text as children
-    });
+    elements.push(...createPageElements(img, index, totalPages));
   });
 
   return elements;

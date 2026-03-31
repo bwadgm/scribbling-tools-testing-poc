@@ -6,11 +6,12 @@ import {
 } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import { DEFAULT_TEMPLATE_ID, getFormById } from '../utils/templates'
-import { generatePageElements } from '../utils/imageHelpers'
+import { createPageElements, generatePageElements } from '../utils/imageHelpers'
 import ToolbarButton from './ToolbarButton'
 import useAutosave from '../utils/useAutosave'
 
 const GAP_BETWEEN_IMAGES = 20
+const EXTRA_PAGE_IMAGE_PATH = '/images/extra_page.png'
 
 // Helper to load image and get dimensions
 const loadImage = (src) => {
@@ -19,6 +20,23 @@ const loadImage = (src) => {
     img.onload = () => resolve({ src, width: img.naturalWidth, height: img.naturalHeight})
     img.onerror = reject
     img.src = src
+  })
+}
+
+const imageUrlToDataUrl = async (src) => {
+  const response = await fetch(src)
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${src}`)
+  }
+
+  const blob = await response.blob()
+
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
   })
 }
 
@@ -133,6 +151,81 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
     })
   }
 
+  const handleAddExtraPage = async () => {
+    if (!excalidrawAPI || !imageData) {
+      return
+    }
+
+    try {
+      const [loadedImage, imageDataUrl] = await Promise.all([
+        loadImage(EXTRA_PAGE_IMAGE_PATH),
+        imageUrlToDataUrl(EXTRA_PAGE_IMAGE_PATH),
+      ])
+      const scale = imageData.minWidth / loadedImage.width
+      const scaledHeight = loadedImage.height * scale
+      const scaledWidth = imageData.minWidth
+      const sceneElements = excalidrawAPI.getSceneElements()
+
+      const pageFrames = sceneElements
+        .filter((element) => element.type === 'frame' && !element.isDeleted)
+        .sort((first, second) => first.y - second.y)
+      const pageCount = pageFrames.length
+      const lastFrame = pageFrames[pageFrames.length - 1]
+      const uniqueSuffix = `${Date.now()}-${pageCount + 1}`
+      const nextImage = {
+        id: `image-extra-${uniqueSuffix}`,
+        src: loadedImage.src,
+        x: 0,
+        y: lastFrame ? lastFrame.y + lastFrame.height + GAP_BETWEEN_IMAGES : 0,
+        width: scaledWidth,
+        height: scaledHeight,
+        originalWidth: loadedImage.width,
+        originalHeight: loadedImage.height,
+      }
+      const appendedElements = createPageElements(nextImage, pageCount, pageCount + 1, {
+        frameId: `frame-extra-${uniqueSuffix}`,
+        textId: `text-extra-${uniqueSuffix}`,
+      })
+      const frameMap = new Map(pageFrames.map((frame, index) => [frame.id, index]))
+      const nextElements = sceneElements.map((element) => {
+        if (element.type !== 'text' || element.isDeleted || !element.frameId) {
+          return element
+        }
+
+        const pageIndex = frameMap.get(element.frameId)
+        if (pageIndex === undefined) {
+          return element
+        }
+
+        const pageLabel = `Page ${pageIndex + 1} of ${pageCount + 1}`
+
+        return {
+          ...element,
+          text: pageLabel,
+          originalText: pageLabel,
+          version: element.version + 1,
+          updated: Date.now(),
+        }
+      })
+
+      excalidrawAPI.updateScene({
+        elements: [...nextElements, ...appendedElements],
+      })
+
+      excalidrawAPI.addFiles([
+        {
+          mimeType: 'image/png',
+          id: nextImage.id,
+          dataURL: imageDataUrl,
+          created: Date.now(),
+          lastRetrieved: Date.now(),
+        },
+      ])
+    } catch (error) {
+      console.error('Failed to add extra page:', error)
+    }
+  }
+
   // Load all images and calculate dimensions
   useEffect(() => {
     const loadAllImages = async () => {
@@ -228,6 +321,10 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         appState: {
           ...(parsedInitialScene.appState || {}),
           zoom: { value: minZoom },
+           frameRendering: {
+            name: false,
+            outline: false,
+          },
           viewBackgroundColor: 'transparent',
         },
         files: parsedInitialScene.files || {},
@@ -269,7 +366,6 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
               </button>
             </div>
 
-            <div className="flex flex-col gap-3">
               {/* <ToolbarButton 
                 onClick={saveSceneAsJSON}
                 title="Save"
@@ -280,7 +376,6 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
                 title="Export"
                 icon="📤"
               /> */}
-            </div>
 
             <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
               <label className="mb-0 block text-xs font-semibold text-gray-700">
@@ -353,6 +448,15 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         lockZoomInHandMode={lockZoomInHandMode}
         renderTopRightUI={() => (
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleAddExtraPage}
+              className="flex h-8 items-center gap-1 rounded-md border border-blue-200 bg-white px-2 text-sm font-medium text-blue-600 shadow-sm transition-colors hover:bg-blue-50"
+              title="Add new page"
+            >
+              <span aria-hidden="true">📄</span>
+              <span>Add</span>
+            </button>
             <ToolbarButton
               onClick={() => setIsMenuOpen(true)}
               title="Menu"
