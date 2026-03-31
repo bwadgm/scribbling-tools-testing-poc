@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import ScribbleCanvas from './ScribbleCanvas'
 import { getFormsForTemplate, FORMS } from '../utils/templates'
+import { deleteFormScene } from '../utils/localStorage'
 
 export default function FormTabs({ templateId, onClose, initialScribble }) {
   const [activeFormIndex, setActiveFormIndex] = useState(0)
@@ -10,9 +11,14 @@ export default function FormTabs({ templateId, onClose, initialScribble }) {
   const forms = getFormsForTemplate(templateId)
 
   const getInitialForms = () => {
+    // First, try to restore from saved scribble's formIds
     if (initialScribble?.formIds && initialScribble.formIds.length > 0) {
-      return initialScribble.formIds.map((id) => FORMS[id]).filter(Boolean)
+      const savedForms = initialScribble.formIds.map((id) => FORMS[id]).filter(Boolean)
+      if (savedForms.length > 0) {
+        return savedForms
+      }
     }
+    // Fallback to template forms
     return getFormsForTemplate(templateId)
   }
 
@@ -40,6 +46,7 @@ export default function FormTabs({ templateId, onClose, initialScribble }) {
         initialScribble={initialScribble}
         onClose={onClose}
         formId={activeForms[0].id}
+        formIds={activeForms.map(f => f.id)} // Pass formIds
       />
     )
   }
@@ -70,8 +77,7 @@ export default function FormTabs({ templateId, onClose, initialScribble }) {
       })
       // Remove saved scene data for this form if scribble is persisted
       if (initialScribble?.id) {
-        // deleteFormScene(initialScribble.id, formId) // Uncomment when implemented
-        console.log('Would delete scene for form:', formId)
+        deleteFormScene(initialScribble.id, formId)
       }
       setShowDeleteConfirm(false)
       setFormToDelete(null)
@@ -192,6 +198,7 @@ export default function FormTabs({ templateId, onClose, initialScribble }) {
           initialScribble={initialScribble}
           onClose={onClose}
           formId={activeForm.id}
+          formIds={formIds} // Pass formIds to ScribbleCanvas
         />
       </div>
 

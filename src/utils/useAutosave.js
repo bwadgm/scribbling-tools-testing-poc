@@ -20,16 +20,17 @@ export default function useAutosave({
   scribbleTitle,
   templateId,
   formId,
+  formIds, // Add formIds to props
   isNewScribble,
   enabled = true,
 }) {
   const timeoutRef = useRef(null)
-  const latestPropsRef = useRef({ scribbleId, scribbleTitle, templateId, formId, isNewScribble })
+  const latestPropsRef = useRef({ scribbleId, scribbleTitle, templateId, formId, formIds, isNewScribble })
 
   // Keep a live reference so the debounced callback never uses stale values.
   useEffect(() => {
-    latestPropsRef.current = { scribbleId, scribbleTitle, templateId, formId, isNewScribble }
-  }, [scribbleId, scribbleTitle, templateId, formId, isNewScribble])
+    latestPropsRef.current = { scribbleId, scribbleTitle, templateId, formId, formIds, isNewScribble }
+  }, [scribbleId, scribbleTitle, templateId, formId, formIds, isNewScribble])
 
   // ---- core save logic (called when debounce fires) ----
   const performSave = useCallback(() => {
@@ -56,7 +57,7 @@ export default function useAutosave({
 
       const serialized = serializeAsJSON(elements, appState, files, 'local')
 
-      const { scribbleId: id, scribbleTitle: title, templateId: tpl, formId: fid } =
+      const { scribbleId: id, scribbleTitle: title, templateId: tpl, formId: fid, formIds: fids } =
         latestPropsRef.current
 
       saveScribble({
@@ -65,6 +66,7 @@ export default function useAutosave({
         scene: serialized,
         templateId: tpl,
         formId: fid,
+        formIds: fids, // Pass formIds to save
       })
     } catch (err) {
       console.error('[useAutosave] save failed:', err)

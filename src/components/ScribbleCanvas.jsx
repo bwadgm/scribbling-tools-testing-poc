@@ -25,7 +25,7 @@ const loadImage = (src) => {
   })
 }
 
-export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFAULT_TEMPLATE_ID }) {
+export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFAULT_TEMPLATE_ID, formIds }) {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null)
   const [imageData, setImageData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -46,12 +46,16 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   const scribbleTitle = initialScribble?.title || 'Untitled Scribble'
   const effectiveTemplateId = initialScribble?.templateId || formId
 
+  // If formIds not provided, default to current formId
+  const effectiveFormIds = formIds || [formId]
+
   useAutosave({
     excalidrawAPI,
     scribbleId: scribbleIdRef.current,
     scribbleTitle,
     templateId: effectiveTemplateId,
     formId,
+    formIds: effectiveFormIds, // Pass effectiveFormIds to autosave
     isNewScribble,
     enabled: true,
   })
@@ -76,7 +80,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
 
   // Get form images based on formId
   const form = useMemo(() => getFormById(formId), [formId])
-  const imagePaths = form.images
+  const imagePaths = form?.images || []
 
   const applySceneData = (parsedScene) => {
     if (!excalidrawAPI || !imageData || !parsedScene) {
