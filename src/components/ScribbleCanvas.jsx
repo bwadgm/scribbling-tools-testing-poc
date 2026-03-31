@@ -39,6 +39,14 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
     const saved = localStorage.getItem('scrollSensitivity')
     return saved ? Number(saved) : 2
   })
+  const [lockZoomInEditingMode, setLockZoomInEditingMode] = useState(() => {
+    const saved = localStorage.getItem('lockZoomInEditingMode')
+    return saved ? JSON.parse(saved) : false
+  })
+  const [lockZoomInHandMode, setLockZoomInHandMode] = useState(() => {
+    const saved = localStorage.getItem('lockZoomInHandMode')
+    return saved ? JSON.parse(saved) : false
+  })
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const containerRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -68,6 +76,18 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   useEffect(() => {
     localStorage.setItem('scrollSensitivity', String(scrollSensitivity))
   }, [scrollSensitivity])
+
+  const handleToggleLockZoom = () => {
+    const newValue = !lockZoomInEditingMode
+    setLockZoomInEditingMode(newValue)
+    localStorage.setItem('lockZoomInEditingMode', JSON.stringify(newValue))
+  }
+
+  const handleToggleLockZoomInHandMode = () => {
+    const newValue = !lockZoomInHandMode
+    setLockZoomInHandMode(newValue)
+    localStorage.setItem('lockZoomInHandMode', JSON.stringify(newValue))
+  }
 
   const parsedInitialScene = useMemo(() => {
     // Handle new scenes object structure (per form)
@@ -218,6 +238,10 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
           scrollX: 0,
           scrollY: 0,
           zoom: { value: minZoom },
+          frameRendering: {
+            name: false,
+            outline: false,
+          },
           viewBackgroundColor: 'transparent',
         },
         files,
@@ -272,6 +296,40 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
                 className="w-full"
               />
             </div>
+
+            <button
+              type="button"
+              onClick={handleToggleLockZoom}
+              className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-3 text-left"
+            >
+              <span className="text-xs font-semibold text-gray-700">
+                Lock Zoom in Editing Mode
+              </span>
+              <span
+                className={`inline-flex h-5 w-9 items-center rounded-full transition-colors ${lockZoomInEditingMode ? 'bg-blue-600' : 'bg-gray-300'}`}
+              >
+                <span
+                  className={`h-4 w-4 rounded-full bg-white transition-transform ${lockZoomInEditingMode ? 'translate-x-4' : 'translate-x-0.5'}`}
+                />
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleToggleLockZoomInHandMode}
+              className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-3 text-left"
+            >
+              <span className="text-xs font-semibold text-gray-700">
+                Lock Zoom in Hand Mode
+              </span>
+              <span
+                className={`inline-flex h-5 w-9 items-center rounded-full transition-colors ${lockZoomInHandMode ? 'bg-blue-600' : 'bg-gray-300'}`}
+              >
+                <span
+                  className={`h-4 w-4 rounded-full bg-white transition-transform ${lockZoomInHandMode ? 'translate-x-4' : 'translate-x-0.5'}`}
+                />
+              </span>
+            </button>
           </div>
         </>
       )}
@@ -291,6 +349,8 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         strokeWidthSlider={true}
         scrollSensitivity={scrollSensitivity}
         minZoom={minZoom}
+        lockZoomInEditingMode={lockZoomInEditingMode}
+        lockZoomInHandMode={lockZoomInHandMode}
         renderTopRightUI={() => (
           <div className="flex items-center gap-2">
             <ToolbarButton

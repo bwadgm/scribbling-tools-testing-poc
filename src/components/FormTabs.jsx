@@ -192,7 +192,7 @@ export default function FormTabs({ templateId, onClose, initialScribble }) {
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 p-4 overflow-hidden">
+      <div className="flex-1 overflow-hidden">
         <ScribbleCanvas
           key={activeForm.id} // Force re-render when switching forms
           initialScribble={initialScribble}

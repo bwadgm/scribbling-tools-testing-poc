@@ -181,9 +181,11 @@ export function getPageInfo(elementSkeletons, pageIndex) {
  */
 export function generatePageElements(imageData) {
   const elements = [];
+  const totalPages = imageData.images.length;
 
   imageData.images.forEach((img, index) => {
     const frameId = `frame-${index}`;
+    const textId = `text-${index}`;
 
     // 1. Create image element FIRST (child comes before frame)
     elements.push({
@@ -217,7 +219,49 @@ export function generatePageElements(imageData) {
       status: 'saved',
     });
 
-    // 2. Create frame element AFTER children
+    // 2. Create page number text element
+    const pageNumber = `Page ${index + 1} of ${totalPages}`;
+    const textY = img.y + img.height; // 15px from bottom
+    const textX = img.x + img.width / 2; // Center horizontally
+
+    elements.push({
+      id: textId,
+      type: 'text',
+      x: textX - 50, // Offset by half width to center the text
+      y: textY,
+      width: 100,
+      height: 15,
+      angle: 0,
+      strokeColor: '#666666',
+      backgroundColor: 'transparent',
+      fillStyle: 'solid',
+      strokeWidth: 0,
+      strokeStyle: 'solid',
+      roughness: 0,
+      opacity: 100,
+      groupIds: [],
+      frameId: frameId, // Bind text to its frame
+      roundness: null,
+      seed: index * 100 + 3,
+      version: 1,
+      versionNonce: index * 100 + 3,
+      isDeleted: false,
+      boundElements: null,
+      updated: Date.now(),
+      link: null,
+      locked: true,
+      text: pageNumber,
+      fontSize: 10,
+      fontFamily: 3, // Virgil (printed font)
+      textAlign: 'center',
+      verticalAlign: 'middle',
+      containerId: null,
+      originalText: pageNumber,
+      autoResize: true,
+      isDetached: false,
+    });
+
+    // 3. Create frame element AFTER children
     elements.push({
       id: frameId,
       type: 'frame',
@@ -245,7 +289,7 @@ export function generatePageElements(imageData) {
       link: null,
       locked: true,
       name: `Image ${index + 1}`,
-      children: [img.id], // Frame contains the image as child
+      children: [img.id, textId], // Frame contains the image and text as children
     });
   });
 
