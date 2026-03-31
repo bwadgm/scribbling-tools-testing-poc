@@ -53,6 +53,8 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   const [imageData, setImageData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [minZoom, setMinZoom] = useState(1)
+  const [isDeleteMenuOpen, setIsDeleteMenuOpen] = useState(false)
+  const [extraPages, setExtraPages] = useState([])
   const [scrollSensitivity, setScrollSensitivity] = useState(() => {
     const saved = localStorage.getItem('scrollSensitivity')
     return saved ? Number(saved) : 2
@@ -105,6 +107,51 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
     const newValue = !lockZoomInHandMode
     setLockZoomInHandMode(newValue)
     localStorage.setItem('lockZoomInHandMode', JSON.stringify(newValue))
+  }
+
+  const getExtraPagesFromElements = (elements) => {
+    const pageFrames = elements
+      .filter((element) => element.type === 'frame' && !element.isDeleted)
+      .sort((first, second) => first.y - second.y)
+
+    return pageFrames
+      .filter((frame) => frame.id.startsWith('frame-extra-'))
+      .map((frame) => ({
+        id: frame.id,
+        label: `Page ${pageFrames.findIndex((pageFrame) => pageFrame.id === frame.id) + 1}`,
+      }))
+  }
+
+  const updateExtraPages = (elements) => {
+    setExtraPages(getExtraPagesFromElements(elements))
+  }
+
+  const updatePageNumbers = (elements) => {
+    const pageFrames = elements
+      .filter((element) => element.type === 'frame' && !element.isDeleted)
+      .sort((first, second) => first.y - second.y)
+    const frameMap = new Map(pageFrames.map((frame, index) => [frame.id, index]))
+
+    return elements.map((element) => {
+      if (element.type !== 'text' || element.isDeleted || !element.frameId) {
+        return element
+      }
+
+      const pageIndex = frameMap.get(element.frameId)
+      if (pageIndex === undefined) {
+        return element
+      }
+
+      const pageLabel = `Page ${pageIndex + 1} of ${pageFrames.length}`
+
+      return {
+        ...element,
+        text: pageLabel,
+        originalText: pageLabel,
+        version: element.version + 1,
+        updated: Date.now(),
+      }
+    })
   }
 
   const parsedInitialScene = useMemo(() => {
@@ -186,31 +233,13 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         frameId: `frame-extra-${uniqueSuffix}`,
         textId: `text-extra-${uniqueSuffix}`,
       })
-      const frameMap = new Map(pageFrames.map((frame, index) => [frame.id, index]))
-      const nextElements = sceneElements.map((element) => {
-        if (element.type !== 'text' || element.isDeleted || !element.frameId) {
-          return element
-        }
-
-        const pageIndex = frameMap.get(element.frameId)
-        if (pageIndex === undefined) {
-          return element
-        }
-
-        const pageLabel = `Page ${pageIndex + 1} of ${pageCount + 1}`
-
-        return {
-          ...element,
-          text: pageLabel,
-          originalText: pageLabel,
-          version: element.version + 1,
-          updated: Date.now(),
-        }
-      })
+      const nextElements = updatePageNumbers([...sceneElements, ...appendedElements])
 
       excalidrawAPI.updateScene({
-        elements: [...nextElements, ...appendedElements],
+        elements: nextElements,
       })
+      updateExtraPages(nextElements)
+      setIsDeleteMenuOpen(false)
 
       excalidrawAPI.addFiles([
         {
@@ -224,6 +253,74 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
     } catch (error) {
       console.error('Failed to add extra page:', error)
     }
+  }
+
+  const handleDeleteExtraPage = (frameIdToDelete) => {
+    if (!excalidrawAPI) {
+      return
+    }
+
+    const sceneElements = excalidrawAPI.getSceneElements()
+    const frameToDelete = sceneElements.find(
+      (element) =>
+        element.type === 'frame' &&
+        !element.isDeleted &&
+        element.id === frameIdToDelete,
+    )
+
+    if (!frameToDelete || !frameIdToDelete.startsWith('frame-extra-')) {
+      return
+    }
+
+    const childIds = new Set(frameToDelete.children || [])
+    const shiftAmount = frameToDelete.height + GAP_BETWEEN_IMAGES
+    const affectedFrameIds = new Set(
+      sceneElements
+        .filter(
+          (element) =>
+            element.type === 'frame' &&
+            !element.isDeleted &&
+            element.y > frameToDelete.y,
+        )
+        .map((element) => element.id),
+    )
+
+    const remainingElements = sceneElements.filter((element) => {
+      if (element.id === frameIdToDelete) {
+        return false
+      }
+
+      if (childIds.has(element.id)) {
+        return false
+      }
+
+      return true
+    })
+
+    const shiftedElements = remainingElements.map((element) => {
+      const shouldShift =
+        affectedFrameIds.has(element.id) ||
+        (element.frameId && affectedFrameIds.has(element.frameId))
+
+      if (!shouldShift) {
+        return element
+      }
+
+      return {
+        ...element,
+        y: element.y - shiftAmount,
+        version: element.version + 1,
+        updated: Date.now(),
+      }
+    })
+
+    const nextElements = updatePageNumbers(shiftedElements)
+
+    excalidrawAPI.updateScene({
+      elements: nextElements,
+    })
+    updateExtraPages(nextElements)
+    setIsDeleteMenuOpen(false)
   }
 
   // Load all images and calculate dimensions
@@ -290,8 +387,16 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   useEffect(() => {
     if (excalidrawAPI && imageData && parsedInitialScene) {
       applySceneData(parsedInitialScene)
+      updateExtraPages(parsedInitialScene.elements || [])
     }
   }, [excalidrawAPI, imageData, parsedInitialScene])
+
+  useEffect(() => {
+    if (!parsedInitialScene) {
+      setExtraPages([])
+      setIsDeleteMenuOpen(false)
+    }
+  }, [parsedInitialScene])
 
   if (isLoading) {
     return <StatusMessage text="Loading images..." />
@@ -321,7 +426,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         appState: {
           ...(parsedInitialScene.appState || {}),
           zoom: { value: minZoom },
-           frameRendering: {
+          frameRendering: {
             name: false,
             outline: false,
           },
@@ -366,20 +471,9 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
               </button>
             </div>
 
-              {/* <ToolbarButton 
-                onClick={saveSceneAsJSON}
-                title="Save"
-                icon="💾"
-              /> */}
-              {/* <ToolbarButton 
-                onClick={exportAllImages}
-                title="Export"
-                icon="📤"
-              /> */}
-
             <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
               <label className="mb-0 block text-xs font-semibold text-gray-700">
-                Scroll Sensitivity: {scrollSensitivity.toFixed(1)}
+                Hand Tool Scroll Sensitivity: {scrollSensitivity.toFixed(1)}
               </label>
               <input
                 type="range"
@@ -432,11 +526,8 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
       <Excalidraw
         key={initialScribble?.id || 'new-scribble'}
         onExcalidrawAPI={(api) => {
-          console.log("API RECEIVED excalidrawAPI: ", api)
           setExcalidrawAPI(api)
         }}
-        // onChange={handleExcalidrawChange}
-        // onScrollChange={handleScrollChange}
         hideMainMenu={true}
         hideLibrary={true}
         hideHelp={true}
@@ -447,7 +538,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         lockZoomInEditingMode={lockZoomInEditingMode}
         lockZoomInHandMode={lockZoomInHandMode}
         renderTopRightUI={() => (
-          <div className="flex items-center gap-2">
+          <div className="relative flex items-center gap-2">
             <button
               type="button"
               onClick={handleAddExtraPage}
@@ -457,6 +548,32 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
               <span aria-hidden="true">📄</span>
               <span>Add</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setIsDeleteMenuOpen((current) => !current)}
+              className="flex h-8 items-center justify-center rounded-md border border-red-200 bg-white px-2 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50"
+              title="Delete extra page"
+            >
+              🗑
+            </button>
+            {isDeleteMenuOpen && (
+              <div className="absolute right-10 top-10 z-[10002] min-w-[160px] rounded-md border border-gray-200 bg-white p-1 shadow-lg">
+                {extraPages.length > 0 ? (
+                  extraPages.map((page) => (
+                    <button
+                      key={page.id}
+                      type="button"
+                      onClick={() => handleDeleteExtraPage(page.id)}
+                      className="flex w-full items-center rounded px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                    >
+                      {page.label}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-sm text-gray-500">No extra pages</div>
+                )}
+              </div>
+            )}
             <ToolbarButton
               onClick={() => setIsMenuOpen(true)}
               title="Menu"
