@@ -54,6 +54,8 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   const [isLoading, setIsLoading] = useState(true)
   const [minZoom, setMinZoom] = useState(1)
   const [isDeleteMenuOpen, setIsDeleteMenuOpen] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [pageToDelete, setPageToDelete] = useState(null)
   const [extraPages, setExtraPages] = useState([])
   const [scrollSensitivity, setScrollSensitivity] = useState(() => {
     const saved = localStorage.getItem('scrollSensitivity')
@@ -125,21 +127,21 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
     localStorage.setItem('lockZoomInHandMode', JSON.stringify(newValue))
   }
 
-  const getExtraPagesFromElements = (elements) => {
+  const getPagesFromElements = (elements) => {
     const pageFrames = elements
       .filter((element) => element.type === 'frame' && !element.isDeleted)
       .sort((first, second) => first.y - second.y)
 
     return pageFrames
-      .filter((frame) => frame.id.startsWith('frame-extra-'))
       .map((frame) => ({
         id: frame.id,
         label: `Page ${pageFrames.findIndex((pageFrame) => pageFrame.id === frame.id) + 1}`,
+        isDeletable: frame.id.startsWith('frame-extra-'),
       }))
   }
 
   const updateExtraPages = (elements) => {
-    setExtraPages(getExtraPagesFromElements(elements))
+    setExtraPages(getPagesFromElements(elements))
   }
 
   const updatePageNumbers = (elements) => {
@@ -255,13 +257,25 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         frameId: `frame-extra-${uniqueSuffix}`,
         textId: `text-extra-${uniqueSuffix}`,
       })
-      const nextElements = updatePageNumbers([...sceneElements, ...appendedElements])
+      
+      // Use restoreElements to properly initialize the new elements
+      const restoredAppended = restoreElements(appendedElements, null)
+      const nextElements = updatePageNumbers([...sceneElements, ...restoredAppended])
 
       excalidrawAPI.updateScene({
         elements: nextElements,
       })
       updateExtraPages(nextElements)
       setIsDeleteMenuOpen(false)
+
+      // Scroll to the newly added page
+      const newFrame = appendedElements.find(el => el.type === 'frame')
+      if (newFrame) {
+        excalidrawAPI.scrollToContent(newFrame, {
+          fitToContent: false,
+          animate: true,
+        })
+      }
 
       excalidrawAPI.addFiles([
         {
@@ -345,6 +359,50 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
     setIsDeleteMenuOpen(false)
   }
 
+  const hasUserContentInFrame = (frameId) => {
+    if (!excalidrawAPI || !frameId) {
+      return false
+    }
+
+    const sceneElements = excalidrawAPI.getSceneElements()
+
+    return sceneElements.some(
+      (element) =>
+        element.frameId === frameId &&
+        !element.isDeleted &&
+        !element.locked,
+    )
+  }
+
+  const requestDeleteExtraPage = (page) => {
+    if (!page?.isDeletable) {
+      return
+    }
+
+    if (!hasUserContentInFrame(page.id)) {
+      handleDeleteExtraPage(page.id)
+      return
+    }
+
+    setPageToDelete(page)
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDeleteExtraPage = () => {
+    if (!pageToDelete) {
+      return
+    }
+
+    handleDeleteExtraPage(pageToDelete.id)
+    setShowDeleteConfirm(false)
+    setPageToDelete(null)
+  }
+
+  const cancelDeleteExtraPage = () => {
+    setShowDeleteConfirm(false)
+    setPageToDelete(null)
+  }
+
   // Load all images and calculate dimensions
   useEffect(() => {
     const loadAllImages = async () => {
@@ -419,6 +477,18 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
       setIsDeleteMenuOpen(false)
     }
   }, [parsedInitialScene])
+
+  useEffect(() => {
+    if (!imageData) {
+      return
+    }
+
+    updateExtraPages(parsedInitialScene?.elements || generatePageElements(imageData))
+
+    if (!parsedInitialScene) {
+      setIsDeleteMenuOpen(false)
+    }
+  }, [imageData, parsedInitialScene])
 
   if (isLoading) {
     return <StatusMessage text="Loading images..." />
@@ -622,23 +692,33 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
               className="flex h-8 items-center justify-center rounded-md border border-red-200 bg-white px-2 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50"
               title="Delete extra page"
             >
-              🗑
+              📑
             </button>
             {isDeleteMenuOpen && (
-              <div className="absolute right-10 top-10 z-[10002] min-w-[160px] rounded-md border border-gray-200 bg-white p-1 shadow-lg">
+              <div className="absolute right-10 top-10 z-[10002] min-w-[150px] rounded-md border border-gray-200 bg-white p-1 shadow-lg">
                 {extraPages.length > 0 ? (
                   extraPages.map((page) => (
-                    <button
+                    <div
                       key={page.id}
-                      type="button"
-                      onClick={() => handleDeleteExtraPage(page.id)}
-                      className="flex w-full items-center rounded px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                      className={`flex w-full px-3 items-center justify-between py-1 mb-1 text-left text-sm ${page.isDeletable ? 'hover:bg-red-50' : 'bg-[#f3f4f6]'}`}
                     >
-                      {page.label}
-                    </button>
+                      <span className={page.isDeletable ? 'text-gray-600' : 'text-gray-400'}>
+                        {page.label}
+                      </span>
+                      {page.isDeletable && (
+                        <button
+                          type="button"
+                          onClick={() => requestDeleteExtraPage(page)}
+                          className="ml-3 px-2 py-1 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded transition-colors"
+                          title={`Delete ${page.label}`}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   ))
                 ) : (
-                  <div className="px-3 py-2 text-sm text-gray-500">No extra pages</div>
+                  <div className="px-3 py-2 text-sm text-gray-500">No pages</div>
                 )}
               </div>
             )}
@@ -650,6 +730,30 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
           </div>
         )}
       />
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Page</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete {pageToDelete?.label?.toLowerCase() || 'this page'}? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={cancelDeleteExtraPage}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteExtraPage}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
