@@ -219,7 +219,7 @@ export function createPageElements(img, index, totalPages, ids = {}) {
     x: textX - 50,
     y: textY,
     width: 100,
-    height: 15,
+    height: 20,
     angle: 0,
     strokeColor: '#666666',
     backgroundColor: 'transparent',
@@ -246,7 +246,7 @@ export function createPageElements(img, index, totalPages, ids = {}) {
     verticalAlign: 'middle',
     containerId: null,
     originalText: pageNumber,
-    autoResize: true,
+    autoResize: false,
     isDetached: false,
   };
 
@@ -256,7 +256,7 @@ export function createPageElements(img, index, totalPages, ids = {}) {
     x: img.x,
     y: img.y,
     width: img.width,
-    height: img.height,
+    height: img.height + 20,
     angle: 0,
     strokeColor: '#868e96',
     backgroundColor: 'transparent',

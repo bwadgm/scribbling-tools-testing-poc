@@ -59,6 +59,14 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
     const saved = localStorage.getItem('scrollSensitivity')
     return saved ? Number(saved) : 2
   })
+  const [pinchPanSensitivity, setPinchPanSensitivity] = useState(() => {
+    const saved = localStorage.getItem('pinchPanSensitivity')
+    return saved ? Number(saved) : 5
+  })
+  const [zoomStep, setZoomStep] = useState(() => {
+    const saved = localStorage.getItem('zoomStep')
+    return saved ? Number(saved) : 10
+  })
   const [lockZoomInEditingMode, setLockZoomInEditingMode] = useState(() => {
     const saved = localStorage.getItem('lockZoomInEditingMode')
     return saved ? JSON.parse(saved) : false
@@ -96,6 +104,14 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
   useEffect(() => {
     localStorage.setItem('scrollSensitivity', String(scrollSensitivity))
   }, [scrollSensitivity])
+
+  useEffect(() => {
+    localStorage.setItem('pinchPanSensitivity', String(pinchPanSensitivity))
+  }, [pinchPanSensitivity])
+
+  useEffect(() => {
+    localStorage.setItem('zoomStep', String(zoomStep))
+  }, [zoomStep])
 
   const handleToggleLockZoom = () => {
     const newValue = !lockZoomInEditingMode
@@ -189,10 +205,16 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
       elements: restoredElements,
       appState: {
         ...restoredAppState,
+        frameRendering: {
+          enabled: true,
+          clip: true,
+          name: false,
+          outline: false,
+        },
         zoom: { value: nextZoom },
         scrollX: Math.max(minScrollX, Math.min(0, restoredAppState.scrollX || 0)),
         scrollY: Math.max(minScrollY, Math.min(0, restoredAppState.scrollY || 0)),
-        viewBackgroundColor: 'transparent',
+        viewBackgroundColor: '#f1f1f1',
       },
       files: parsedScene.files || {},
     })
@@ -223,7 +245,7 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         id: `image-extra-${uniqueSuffix}`,
         src: loadedImage.src,
         x: 0,
-        y: lastFrame ? lastFrame.y + lastFrame.height + GAP_BETWEEN_IMAGES : 0,
+        y: lastFrame ? lastFrame.y + lastFrame.height : 0,
         width: scaledWidth,
         height: scaledHeight,
         originalWidth: loadedImage.width,
@@ -352,12 +374,12 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
             originalHeight: img.height,
           }
 
-          currentY += scaledHeight + GAP_BETWEEN_IMAGES
+          currentY += scaledHeight + 20
 
           return imageInfo
         })
 
-        const totalHeight = currentY - GAP_BETWEEN_IMAGES // Remove last gap
+        const totalHeight = currentY - 20 // Remove last extra frame height
 
         setImageData({
           images: scaledImages,
@@ -427,10 +449,12 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
           ...(parsedInitialScene.appState || {}),
           zoom: { value: minZoom },
           frameRendering: {
+            enabled: true,
+            clip: true,
             name: false,
             outline: false,
           },
-          viewBackgroundColor: 'transparent',
+          viewBackgroundColor: '#f1f1f1',
         },
         files: parsedInitialScene.files || {},
       }
@@ -441,10 +465,12 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
           scrollY: 0,
           zoom: { value: minZoom },
           frameRendering: {
+            enabled: true,
+            clip: true,
             name: false,
             outline: false,
           },
-          viewBackgroundColor: 'transparent',
+          viewBackgroundColor: '#f1f1f1',
         },
         files,
       }
@@ -471,54 +497,94 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
               </button>
             </div>
 
-            <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
-              <label className="mb-0 block text-xs font-semibold text-gray-700">
-                Hand Tool Scroll Sensitivity: {scrollSensitivity.toFixed(1)}
-              </label>
-              <input
-                type="range"
-                min="0.4"
-                max="6"
-                step="0.2"
-                value={scrollSensitivity}
-                onChange={(event) => setScrollSensitivity(Number(event.target.value))}
-                className="w-full"
-              />
+            {/* Hand Tool */}
+            <div className="flex flex-col gap-3">
+              <h3 className="text-sm font-semibold text-gray-800 border-b border-gray-300 pb-1">Hand Tool</h3>
+              <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <label className="mb-0 block text-xs font-semibold text-gray-700">
+                  Hand Tool Scroll Sensitivity: {scrollSensitivity.toFixed(1)}
+                </label>
+                <input
+                  type="range"
+                  min="0.4"
+                  max="6"
+                  step="0.2"
+                  value={scrollSensitivity}
+                  onChange={(event) => setScrollSensitivity(Number(event.target.value))}
+                  className="w-full"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleLockZoomInHandMode}
+                className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-3 text-left"
+              >
+                <span className="text-xs font-semibold text-gray-700">
+                  Lock Zoom in Hand Mode
+                </span>
+                <span
+                  className={`inline-flex h-5 w-9 items-center rounded-full transition-colors ${lockZoomInHandMode ? 'bg-blue-600' : 'bg-gray-300'}`}
+                >
+                  <span
+                    className={`h-4 w-4 rounded-full bg-white transition-transform ${lockZoomInHandMode ? 'translate-x-4' : 'translate-x-0.5'}`}
+                  />
+                </span>
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={handleToggleLockZoom}
-              className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-3 text-left"
-            >
-              <span className="text-xs font-semibold text-gray-700">
-                Lock Zoom in Editing Mode
-              </span>
-              <span
-                className={`inline-flex h-5 w-9 items-center rounded-full transition-colors ${lockZoomInEditingMode ? 'bg-blue-600' : 'bg-gray-300'}`}
+            {/* Editing Tools */}
+            <div className="flex flex-col gap-3">
+              <h3 className="text-sm font-semibold text-gray-800 border-b border-gray-300 pb-1">Editing Tools</h3>
+              <button
+                type="button"
+                onClick={handleToggleLockZoom}
+                className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-3 text-left"
               >
+                <span className="text-xs font-semibold text-gray-700">
+                  Lock Zoom in Editing Mode
+                </span>
                 <span
-                  className={`h-4 w-4 rounded-full bg-white transition-transform ${lockZoomInEditingMode ? 'translate-x-4' : 'translate-x-0.5'}`}
-                />
-              </span>
-            </button>
+                  className={`inline-flex h-5 w-9 items-center rounded-full transition-colors ${lockZoomInEditingMode ? 'bg-blue-600' : 'bg-gray-300'}`}
+                >
+                  <span
+                    className={`h-4 w-4 rounded-full bg-white transition-transform ${lockZoomInEditingMode ? 'translate-x-4' : 'translate-x-0.5'}`}
+                  />
+                </span>
+              </button>
+            </div>
 
-            <button
-              type="button"
-              onClick={handleToggleLockZoomInHandMode}
-              className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-3 text-left"
-            >
-              <span className="text-xs font-semibold text-gray-700">
-                Lock Zoom in Hand Mode
-              </span>
-              <span
-                className={`inline-flex h-5 w-9 items-center rounded-full transition-colors ${lockZoomInHandMode ? 'bg-blue-600' : 'bg-gray-300'}`}
-              >
-                <span
-                  className={`h-4 w-4 rounded-full bg-white transition-transform ${lockZoomInHandMode ? 'translate-x-4' : 'translate-x-0.5'}`}
+            {/* All Tools */}
+            <div className="flex flex-col gap-3">
+              <h3 className="text-sm font-semibold text-gray-800 border-b border-gray-300 pb-1">All Tools</h3>
+              <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <label className="mb-0 block text-xs font-semibold text-gray-700">
+                  Pinch Pan Sensitivity: {pinchPanSensitivity.toFixed(1)}
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="50"
+                  step="0.5"
+                  value={pinchPanSensitivity}
+                  onChange={(event) => setPinchPanSensitivity(Number(event.target.value))}
+                  className="w-full"
                 />
-              </span>
-            </button>
+              </div>
+              <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <label className="mb-0 block text-xs font-semibold text-gray-700">
+                  Zoom Step: {zoomStep}%
+                </label>
+                <input
+                  type="range"
+                  min="10"
+                  max="50"
+                  step="5"
+                  value={zoomStep}
+                  onChange={(event) => setZoomStep(Number(event.target.value))}
+                  className="w-full"
+                />
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -534,6 +600,8 @@ export default function ScribbleCanvas({ initialScribble, onClose, formId = DEFA
         initialData={initialData}
         strokeWidthSlider={true}
         scrollSensitivity={scrollSensitivity}
+        pinchPanSensitivity={pinchPanSensitivity}
+        zoomStep={zoomStep / 100}
         minZoom={minZoom}
         lockZoomInEditingMode={lockZoomInEditingMode}
         lockZoomInHandMode={lockZoomInHandMode}
